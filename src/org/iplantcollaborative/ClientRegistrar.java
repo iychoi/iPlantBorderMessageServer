@@ -49,7 +49,7 @@ public class ClientRegistrar implements Closeable {
     private static final Log LOG = LogFactory.getLog(ClientRegistrar.class);
     
     private static final String EXCHANGE_NAME = "";
-    private static final String QUEUE_NAME = "rpc_queue";
+    private static final String QUEUE_NAME = "bms_registrations";
     private static final long DEFAULT_TIMEOUT_MIN = 10;
     
     private MessageServerConf serverConf;
