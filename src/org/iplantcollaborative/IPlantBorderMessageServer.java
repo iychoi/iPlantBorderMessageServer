@@ -40,10 +40,10 @@ public class IPlantBorderMessageServer implements Closeable {
     public IPlantBorderMessageServer(MessageServerConf conf) {
         this.conf = conf;
         
-        Binder binder = new Binder();
-        MessageProcessor processor = new MessageProcessor(binder);
-        MessagePublisher publisher = new MessagePublisher(conf, binder);
-        MessageSubscriber subscriber = new MessageSubscriber(conf, binder);
+        this.binder = new Binder();
+        this.processor = new MessageProcessor(this.binder);
+        this.publisher = new MessagePublisher(this.conf, this.binder);
+        this.subscriber = new MessageSubscriber(this.conf, this.binder);
     }
     
     public void connect() throws IOException {
