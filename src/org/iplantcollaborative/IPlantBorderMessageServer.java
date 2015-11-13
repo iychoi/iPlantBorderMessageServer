@@ -36,6 +36,7 @@ public class IPlantBorderMessageServer implements Closeable {
     private MessageProcessor processor;
     private MessagePublisher publisher;
     private MessageSubscriber subscriber;
+    private ClientRegistrar registrar;
     
     public IPlantBorderMessageServer(MessageServerConf conf) {
         this.conf = conf;
@@ -44,12 +45,14 @@ public class IPlantBorderMessageServer implements Closeable {
         this.processor = new MessageProcessor(this.binder);
         this.publisher = new MessagePublisher(this.conf, this.binder);
         this.subscriber = new MessageSubscriber(this.conf, this.binder);
+        this.registrar = new ClientRegistrar(this.conf, this.binder);
     }
     
     public void connect() throws IOException {
         try {
             this.publisher.connect();
             this.subscriber.connect();
+            this.registrar.connect();
         } catch (TimeoutException ex) {
             LOG.error(ex);
         }
@@ -57,6 +60,7 @@ public class IPlantBorderMessageServer implements Closeable {
     
     @Override
     public void close() throws IOException {
+        this.registrar.close();
         this.subscriber.close();
         this.publisher.close();
     }
