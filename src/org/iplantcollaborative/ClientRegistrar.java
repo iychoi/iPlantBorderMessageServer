@@ -48,14 +48,14 @@ public class ClientRegistrar implements Closeable {
     
     private static final Log LOG = LogFactory.getLog(ClientRegistrar.class);
     
-    private static final String EXCHANGE_NAME = "";
-    private static final String QUEUE_NAME = "bms_registrations";
+    private static final String EXCHANGE_NAME = "bms_registrations";
     private static final long DEFAULT_TIMEOUT_MIN = 10;
     
     private MessageServerConf serverConf;
     private Binder binder;
     private Connection connection;
     private Channel channel;
+    private String queueName;
     private Consumer consumer;
     private Thread workerThread;
     private JsonSerializer serializer;
@@ -96,8 +96,9 @@ public class ClientRegistrar implements Closeable {
         
         LOG.info("client registrar connected - " + this.serverConf.getHostname() + ":" + this.serverConf.getPort());
         
-        this.channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+        this.queueName = this.channel.queueDeclare().getQueue();
         this.channel.basicQos(1);
+        this.channel.queueBind(this.queueName, EXCHANGE_NAME, "#");
         
         this.consumer = new QueueingConsumer(this.channel);
         this.workerThread = new Thread(new Runnable() {
@@ -105,7 +106,7 @@ public class ClientRegistrar implements Closeable {
             @Override
             public void run() {
                 try {
-                    channel.basicConsume(QUEUE_NAME, false, consumer);
+                    channel.basicConsume(queueName, false, consumer);
                     LOG.info("Waiting for registrations");
                     while(true) {
                         QueueingConsumer qconsumer = (QueueingConsumer)consumer;
