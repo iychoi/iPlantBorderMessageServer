@@ -96,6 +96,8 @@ public class ClientRegistrar implements Closeable {
         
         LOG.info("client registrar connected - " + this.serverConf.getHostname() + ":" + this.serverConf.getPort());
         
+        this.channel.exchangeDeclare(EXCHANGE_NAME, "direct", true, true, false, null);
+        
         this.queueName = this.channel.queueDeclare().getQueue();
         this.channel.basicQos(1);
         this.channel.queueBind(this.queueName, EXCHANGE_NAME, "#");
