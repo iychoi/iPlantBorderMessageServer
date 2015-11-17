@@ -15,6 +15,7 @@
  */
 package org.iplantcollaborative;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
@@ -23,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
+import org.iplantcollaborative.conf.DataStoreConf;
 import org.iplantcollaborative.datastore.msg.CollectionAclMod;
 import org.iplantcollaborative.datastore.msg.CollectionAdd;
 import org.iplantcollaborative.datastore.msg.CollectionMv;
@@ -33,6 +35,7 @@ import org.iplantcollaborative.datastore.msg.DataObjectMod;
 import org.iplantcollaborative.datastore.msg.DataObjectMv;
 import org.iplantcollaborative.datastore.msg.DataObjectRm;
 import org.iplantcollaborative.datastore.msg.User;
+import org.iplantcollaborative.irods.DataStoreClient;
 import org.iplantcollaborative.lease.Client;
 import org.iplantcollaborative.utils.JsonSerializer;
 
@@ -40,21 +43,36 @@ import org.iplantcollaborative.utils.JsonSerializer;
  *
  * @author iychoi
  */
-public class MessageProcessor {
+public class MessageProcessor implements Closeable {
     
     private static final Log LOG = LogFactory.getLog(MessageProcessor.class);
     
     private Binder binder;
     private JsonSerializer serializer;
+    private DataStoreClient datastoreClient;
     private UUIDCache cache;
     
-    public MessageProcessor(Binder binder) {
+    public MessageProcessor(DataStoreConf datastoreConf, Binder binder) {
+        if(datastoreConf == null) {
+            throw new IllegalArgumentException("datastoreConf is null");
+        }
+        
+        if(binder == null) {
+            throw new IllegalArgumentException("binder is null");
+        }
+        
         this.binder = binder;
         
         binder.setProcessor(this);
         
         this.serializer = new JsonSerializer();
         this.cache = new UUIDCache();
+        
+        this.datastoreClient = new DataStoreClient(datastoreConf);
+    }
+    
+    public void connect() throws IOException {
+        this.datastoreClient.connect();
     }
     
     public void process(String routingKey, String message) {
@@ -604,8 +622,13 @@ public class MessageProcessor {
         }
     }
 
-    private String convertUUIDToPath(String entity) {
-        //TODO: convert 
-        return null;
+    private String convertUUIDToPath(String entity) throws IOException {
+        return this.datastoreClient.convertUUIDToPath(entity);
     }    
+
+    @Override
+    public void close() throws IOException {
+        this.datastoreClient.close();
+        this.datastoreClient = null;
+    }
 }

@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.iplantcollaborative.conf.BMSConf;
+import org.iplantcollaborative.conf.DataStoreConf;
 import org.iplantcollaborative.conf.MessageServerConf;
 
 /**
@@ -31,25 +33,28 @@ public class IPlantBorderMessageServer implements Closeable {
 
     private static final Log LOG = LogFactory.getLog(IPlantBorderMessageServer.class);
 
-    private MessageServerConf conf;
+    private MessageServerConf msgsvrConf;
+    private DataStoreConf datastoreConf;
     private Binder binder;
     private MessageProcessor processor;
     private MessagePublisher publisher;
     private MessageSubscriber subscriber;
     private ClientRegistrar registrar;
     
-    public IPlantBorderMessageServer(MessageServerConf conf) {
-        this.conf = conf;
+    public IPlantBorderMessageServer(MessageServerConf msgsvrConf, DataStoreConf datastoreConf) {
+        this.msgsvrConf = msgsvrConf;
+        this.datastoreConf = datastoreConf;
         
         this.binder = new Binder();
-        this.processor = new MessageProcessor(this.binder);
-        this.publisher = new MessagePublisher(this.conf, this.binder);
-        this.subscriber = new MessageSubscriber(this.conf, this.binder);
-        this.registrar = new ClientRegistrar(this.conf, this.binder);
+        this.processor = new MessageProcessor(this.datastoreConf, this.binder);
+        this.publisher = new MessagePublisher(this.msgsvrConf, this.binder);
+        this.subscriber = new MessageSubscriber(this.msgsvrConf, this.binder);
+        this.registrar = new ClientRegistrar(this.msgsvrConf, this.binder);
     }
     
     public void connect() throws IOException {
         try {
+            this.processor.connect();
             this.publisher.connect();
             this.subscriber.connect();
             this.registrar.connect();
@@ -63,6 +68,7 @@ public class IPlantBorderMessageServer implements Closeable {
         this.registrar.close();
         this.subscriber.close();
         this.publisher.close();
+        this.processor.close();
     }
     
     /**
@@ -74,10 +80,10 @@ public class IPlantBorderMessageServer implements Closeable {
             return;
         }
         
-        String msgconf = args[0];
+        String bmsconf = args[0];
         
-        MessageServerConf conf = MessageServerConf.createInstance(new File(msgconf));
-        IPlantBorderMessageServer server = new IPlantBorderMessageServer(conf);
+        BMSConf conf = BMSConf.createInstance(new File(bmsconf));
+        IPlantBorderMessageServer server = new IPlantBorderMessageServer(conf.getMessageServerConf(), conf.getDataStoreConfConf());
         server.connect();
     }
 }

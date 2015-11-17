@@ -1,0 +1,150 @@
+/*
+ * Copyright 2015 iychoi.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.iplantcollaborative.irods;
+
+import java.io.Closeable;
+import java.io.IOException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.iplantcollaborative.conf.DataStoreConf;
+import org.irods.jargon.core.connection.IRODSAccount;
+import org.irods.jargon.core.connection.auth.AuthResponse;
+import org.irods.jargon.core.exception.AuthenticationException;
+import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
+import org.irods.jargon.core.pub.IRODSFileSystem;
+import org.irods.jargon.core.pub.IRODSGenQueryExecutor;
+import org.irods.jargon.core.query.IRODSGenQuery;
+import org.irods.jargon.core.query.IRODSQueryResultSet;
+import org.irods.jargon.core.query.JargonQueryException;
+import org.irods.jargon.core.query.RodsGenQueryEnum;
+
+/**
+ *
+ * @author iychoi
+ */
+public class DataStoreClient implements Closeable {
+
+    private static final Log LOG = LogFactory.getLog(DataStoreClient.class);
+
+    private DataStoreConf datastoreConf;
+    private IRODSFileSystem irodsFS;
+    private IRODSAccount irodsAccount;
+    private IRODSAccessObjectFactory accessObjectFactory;
+    private IRODSGenQueryExecutor irodsGenQueryExecutor;
+
+    public DataStoreClient(DataStoreConf datastoreConf) {
+        if (datastoreConf == null) {
+            throw new IllegalArgumentException("datastoreConf is null");
+        }
+
+        initialize(datastoreConf);
+    }
+
+    private void initialize(DataStoreConf datastoreConf) {
+        this.datastoreConf = datastoreConf;
+    }
+
+    private String makeDefaultHome(String zone) {
+        String defaultdir = "/" + zone.trim();
+        return defaultdir;
+    }
+
+    private String makeDefaultStorageResource() {
+        return "";
+    }
+
+    private IRODSAccount createIRODSAccount(String host, int port, String zone, String user, String password) throws IOException {
+        IRODSAccount account = null;
+        String home = makeDefaultHome(zone);
+        String resource = makeDefaultStorageResource();
+
+        try {
+            account = IRODSAccount.instance(host, port, user, password, home, zone, resource);
+            return account;
+        } catch (JargonException ex) {
+            throw new IOException(ex);
+        }
+    }
+
+    public void connect() throws IOException {
+        try {
+            this.irodsFS = IRODSFileSystem.instance();
+        } catch (JargonException ex) {
+            throw new IOException(ex);
+        }
+        this.irodsAccount = createIRODSAccount(this.datastoreConf.getHostname(), this.datastoreConf.getPort(),
+                this.datastoreConf.getZone(), this.datastoreConf.getUserId(), this.datastoreConf.getUserPwd());
+
+        AuthResponse response;
+        try {
+            response = this.irodsFS.getIRODSAccessObjectFactory().authenticateIRODSAccount(this.irodsAccount);
+            LOG.info("irods client connected - " + this.datastoreConf.getHostname() + ":" + this.datastoreConf.getPort());
+
+            this.accessObjectFactory = this.irodsFS.getIRODSAccessObjectFactory();
+            this.irodsGenQueryExecutor = accessObjectFactory.getIRODSGenQueryExecutor(this.irodsAccount);
+        } catch (AuthenticationException ex) {
+            LOG.error(ex);
+            throw new IOException(ex);
+        } catch (JargonException ex) {
+            throw new IOException(ex);
+        }
+
+        if (!response.isSuccessful()) {
+            throw new IOException("Cannot authenticate to IRODS");
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            this.irodsFS.close();
+        } catch (JargonException ex) {
+            throw new IOException(ex);
+        }
+    }
+
+    private IRODSQueryResultSet queryUUID(String entity) throws JargonException, JargonQueryException {
+        StringBuilder q = new StringBuilder();
+        q.append("select ");
+        q.append(RodsGenQueryEnum.COL_COLL_NAME.getName()).append(", ");
+        q.append(RodsGenQueryEnum.COL_DATA_NAME.getName());
+        q.append(" where ");
+        q.append("ipc_UUID");
+        q.append(" = '");
+        q.append(entity).append("'");
+        q.append(" OR ");
+        q.append("ipc_UUID");
+        q.append(" = '");
+        q.append(entity).append("'");
+        IRODSGenQuery irodsQuery = IRODSGenQuery.instance(q.toString(), 1);
+        IRODSQueryResultSet resultSet = this.irodsGenQueryExecutor.executeIRODSQuery(irodsQuery, 0);
+        return resultSet;
+    }
+
+    public String convertUUIDToPath(String entity) throws IOException {
+        try {
+            IRODSQueryResultSet result = queryUUID(entity);
+            return result.getFirstResult().getColumn(0);
+        } catch (JargonException ex) {
+            LOG.error(ex);
+            throw new IOException(ex);
+        } catch (JargonQueryException ex) {
+            LOG.error(ex);
+            throw new IOException(ex);
+        }
+    }
+}
