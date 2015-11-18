@@ -71,6 +71,30 @@ public class IPlantBorderMessageServer implements Closeable {
         this.processor.close();
     }
     
+    public MessageServerConf getMessageServerConf() {
+        return msgsvrConf;
+    }
+
+    public DataStoreConf getDataStoreConf() {
+        return datastoreConf;
+    }
+
+    public MessageProcessor getProcessor() {
+        return processor;
+    }
+
+    public MessagePublisher getPublisher() {
+        return publisher;
+    }
+
+    public MessageSubscriber getSubscriber() {
+        return subscriber;
+    }
+
+    public ClientRegistrar getRegistrar() {
+        return registrar;
+    }
+    
     /**
      * @param args the command line arguments
      */

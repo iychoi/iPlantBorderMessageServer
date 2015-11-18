@@ -23,11 +23,13 @@ import org.iplantcollaborative.conf.DataStoreConf;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.connection.auth.AuthResponse;
 import org.irods.jargon.core.exception.AuthenticationException;
+import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.IRODSGenQueryExecutor;
 import org.irods.jargon.core.query.IRODSGenQuery;
+import org.irods.jargon.core.query.IRODSQueryResultRow;
 import org.irods.jargon.core.query.IRODSQueryResultSet;
 import org.irods.jargon.core.query.JargonQueryException;
 import org.irods.jargon.core.query.RodsGenQueryEnum;
@@ -117,28 +119,59 @@ public class DataStoreClient implements Closeable {
         }
     }
 
-    private IRODSQueryResultSet queryUUID(String entity) throws JargonException, JargonQueryException {
+    private IRODSQueryResultSet queryDataObjectUUID(String entity) throws JargonException, JargonQueryException {
         StringBuilder q = new StringBuilder();
         q.append("select ");
         q.append(RodsGenQueryEnum.COL_COLL_NAME.getName()).append(", ");
         q.append(RodsGenQueryEnum.COL_DATA_NAME.getName());
         q.append(" where ");
-        q.append("ipc_UUID");
-        q.append(" = '");
-        q.append(entity).append("'");
-        q.append(" OR ");
-        q.append("ipc_UUID");
-        q.append(" = '");
-        q.append(entity).append("'");
+        q.append(RodsGenQueryEnum.COL_META_DATA_ATTR_NAME.getName());
+        q.append(" = ");
+        q.append("'ipc_UUID'");
+        q.append(" AND ");
+        q.append(RodsGenQueryEnum.COL_META_DATA_ATTR_VALUE.getName());
+        q.append(" = ");
+        q.append("'").append(entity).append("'");
+
+        IRODSGenQuery irodsQuery = IRODSGenQuery.instance(q.toString(), 1);
+        IRODSQueryResultSet resultSet = this.irodsGenQueryExecutor.executeIRODSQuery(irodsQuery, 0);
+        return resultSet;
+    }
+    
+    private IRODSQueryResultSet queryCollectionUUID(String entity) throws JargonException, JargonQueryException {
+        StringBuilder q = new StringBuilder();
+        q.append("select ");
+        q.append(RodsGenQueryEnum.COL_COLL_NAME.getName());
+        q.append(" where ");
+        q.append(RodsGenQueryEnum.COL_META_COLL_ATTR_NAME.getName());
+        q.append(" = ");
+        q.append("'ipc_UUID'");
+        q.append(" AND ");
+        q.append(RodsGenQueryEnum.COL_META_COLL_ATTR_VALUE.getName());
+        q.append(" = ");
+        q.append("'").append(entity).append("'");
+
         IRODSGenQuery irodsQuery = IRODSGenQuery.instance(q.toString(), 1);
         IRODSQueryResultSet resultSet = this.irodsGenQueryExecutor.executeIRODSQuery(irodsQuery, 0);
         return resultSet;
     }
 
     public String convertUUIDToPath(String entity) throws IOException {
+        // test dataobject
         try {
-            IRODSQueryResultSet result = queryUUID(entity);
-            return result.getFirstResult().getColumn(0);
+            IRODSQueryResultSet dataObjectResult = queryDataObjectUUID(entity);
+            IRODSQueryResultRow firstDataObjectResult = dataObjectResult.getFirstResult();
+            if(firstDataObjectResult != null) {
+                String parent = firstDataObjectResult.getColumn(0);
+                String file = firstDataObjectResult.getColumn(1);
+                if(parent.endsWith("/")) {
+                    return parent + file;
+                } else {
+                    return parent + "/" + file;
+                }
+            }
+        } catch (DataNotFoundException ex) {
+            // fall
         } catch (JargonException ex) {
             LOG.error(ex);
             throw new IOException(ex);
@@ -146,5 +179,25 @@ public class DataStoreClient implements Closeable {
             LOG.error(ex);
             throw new IOException(ex);
         }
+        
+        // test collection
+        try {
+            IRODSQueryResultSet collectionResult = queryCollectionUUID(entity);
+            IRODSQueryResultRow firstCollectionResult = collectionResult.getFirstResult();
+            if(firstCollectionResult != null) {
+                String parent = firstCollectionResult.getColumn(0);
+                return parent;
+            }
+        } catch (DataNotFoundException ex) {
+            // fall
+        } catch (JargonException ex) {
+            LOG.error(ex);
+            throw new IOException(ex);
+        } catch (JargonQueryException ex) {
+            LOG.error(ex);
+            throw new IOException(ex);
+        }
+        
+        return null;
     }
 }

@@ -624,7 +624,11 @@ public class MessageProcessor implements Closeable {
 
     private String convertUUIDToPath(String entity) throws IOException {
         return this.datastoreClient.convertUUIDToPath(entity);
-    }    
+    }
+    
+    public DataStoreClient getDatastoreClient() {
+        return datastoreClient;
+    }
 
     @Override
     public void close() throws IOException {
