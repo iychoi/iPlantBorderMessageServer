@@ -15,14 +15,14 @@
  */
 package org.iplantcollaborative;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Consumer;
-import com.rabbitmq.client.ConsumerCancelledException;
-import com.rabbitmq.client.QueueingConsumer;
-import com.rabbitmq.client.ShutdownSignalException;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -99,50 +99,39 @@ public class ClientRegistrar implements Closeable {
         this.channel.basicQos(1);
         //this.channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, "#");
         
-        this.consumer = new QueueingConsumer(this.channel);
-        this.workerThread = new Thread(new Runnable() {
+        this.consumer = new DefaultConsumer(this.channel) {
+            @Override
+            public void handleDelivery(String consumerTag, Envelope envelope, 
+                    AMQP.BasicProperties properties, byte[] body) throws IOException {
+                String message = new String(body, "UTF-8");
+                
+                LOG.debug("registration - " + message);
+                
+                BasicProperties replyProps = new BasicProperties.Builder().correlationId(properties.getCorrelationId()).build();
+                
+                ARequest request = RequestFactory.getRequestInstance(message);
 
+                // handle lease request
+                if(request instanceof RequestLease) {
+                    ResponseLease res = lease((RequestLease)request);
+                    String response_json = serializer.toJson(res);
+
+                    channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
+                    channel.basicAck(envelope.getDeliveryTag(), false);
+                }
+            }
+        };
+        
+        this.workerThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     channel.basicConsume(QUEUE_NAME, false, consumer);
                     LOG.info("Waiting for registrations");
-                    while(true) {
-                        QueueingConsumer qconsumer = (QueueingConsumer)consumer;
-                        try {
-                            QueueingConsumer.Delivery delivery = qconsumer.nextDelivery();
-                            BasicProperties properties = delivery.getProperties();    
-                            BasicProperties replyProps = new BasicProperties.Builder().correlationId(properties.getCorrelationId()).build();
-                            
-                            String message = new String(delivery.getBody(), "UTF-8");
-                            
-                            LOG.debug("registration - " + message);
-                            
-                            ARequest request = RequestFactory.getRequestInstance(message);
-                            
-                            // handle lease request
-                            if(request instanceof RequestLease) {
-                                ResponseLease res = lease((RequestLease)request);
-                                String response_json = serializer.toJson(res);
-
-                                channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
-                                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-                            }
-                        } catch (InterruptedException ex) {
-                            LOG.error(ex);
-                            break;
-                        } catch (ShutdownSignalException ex) {
-                            LOG.error(ex);
-                            break;
-                        } catch (ConsumerCancelledException ex) {
-                            LOG.error(ex);
-                            break;
-                        }
-                    }
                 } catch (IOException ex) {
                     LOG.error(ex);
                 }
-            }
+            } 
         });
         this.workerThread.start();
     }
