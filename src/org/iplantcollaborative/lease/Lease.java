@@ -18,6 +18,7 @@ package org.iplantcollaborative.lease;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import org.iplantcollaborative.lease.msg.ReqestLease;
 
 /**
  *
@@ -29,6 +30,19 @@ public class Lease {
     private Date leaseTime;
 
     public Lease() {
+        this.leaseTime = new Date();
+    }
+    
+    public Lease(ReqestLease request) {
+        this.user = request.getClient();
+        
+        for(AcceptorConfig config : request.getAcceptor()) {
+            IMessageAcceptor acceptorInstance = AcceptorFactory.getAcceptorInstance(config.getAcceptor(), config.getPattern());
+            if(acceptorInstance != null) {
+                this.acceptors.add(acceptorInstance);
+            }
+        }
+        
         this.leaseTime = new Date();
     }
     

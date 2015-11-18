@@ -15,6 +15,10 @@
  */
 package org.iplantcollaborative.lease;
 
+import java.io.IOException;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+
 /**
  *
  * @author iychoi
@@ -43,7 +47,25 @@ public class OperationAcceptor implements IMessageAcceptor {
     
     @Override
     public boolean accept(String message) {
-        return wildCardMatch(message);
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        try {
+            ObjectMapper m = new ObjectMapper();
+            
+            JsonNode rootNode = m.readTree(message);
+            JsonNode operationNode = rootNode.get("operation");
+            if(operationNode != null) {
+                String operation = operationNode.asText();
+                if(operation != null) {
+                    return wildCardMatch(operation);
+                }
+            }
+            return false;
+        } catch (IOException ex) {
+            return false;
+        }
     }
 
     @Override

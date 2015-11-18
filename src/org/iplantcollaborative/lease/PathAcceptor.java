@@ -15,6 +15,10 @@
  */
 package org.iplantcollaborative.lease;
 
+import java.io.IOException;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+
 /**
  *
  * @author iychoi
@@ -43,7 +47,45 @@ public class PathAcceptor implements IMessageAcceptor {
     
     @Override
     public boolean accept(String message) {
-        return wildCardMatch(message);
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        try {
+            ObjectMapper m = new ObjectMapper();
+            
+            JsonNode rootNode = m.readTree(message);
+            
+            // path
+            JsonNode pathNode = rootNode.get("path");
+            if(pathNode != null) {
+                String path = pathNode.asText();
+                if(path != null) {
+                    return wildCardMatch(path);
+                }
+            }
+            
+            // new-path, old-path
+            JsonNode newpathNode = rootNode.get("new-path");
+            if(newpathNode != null) {
+                String path = newpathNode.asText();
+                if(path != null) {
+                    return wildCardMatch(path);
+                }
+            }
+            
+            JsonNode oldpathNode = rootNode.get("old-path");
+            if(oldpathNode != null) {
+                String path = oldpathNode.asText();
+                if(path != null) {
+                    return wildCardMatch(path);
+                }
+            }
+            
+            return false;
+        } catch (IOException ex) {
+            return false;
+        }
     }
 
     @Override

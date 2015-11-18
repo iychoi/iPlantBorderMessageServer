@@ -15,6 +15,7 @@
  */
 package org.iplantcollaborative.lease.msg;
 
+import org.iplantcollaborative.lease.AcceptorConfig;
 import java.util.ArrayList;
 import java.util.List;
 import org.codehaus.jackson.annotate.JsonProperty;

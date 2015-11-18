@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.iplantcollaborative.lease.msg;
+package org.iplantcollaborative.lease;
+
+import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  *
@@ -27,18 +29,22 @@ public class AcceptorConfig {
         
     }
     
+    @JsonProperty("acceptor")
     public String getAcceptor() {
         return acceptor;
     }
 
+    @JsonProperty("acceptor")
     public void setAcceptor(String acceptor) {
         this.acceptor = acceptor;
     }
 
+    @JsonProperty("pattern")
     public String getPattern() {
         return pattern;
     }
 
+    @JsonProperty("pattern")
     public void setPattern(String pattern) {
         this.pattern = pattern;
     }

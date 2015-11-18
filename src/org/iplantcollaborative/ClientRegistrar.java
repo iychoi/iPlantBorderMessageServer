@@ -27,15 +27,13 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.apache.commons.collections4.MapIterator;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.iplantcollaborative.conf.MessageServerConf;
-import org.iplantcollaborative.lease.AcceptorFactory;
 import org.iplantcollaborative.lease.Client;
-import org.iplantcollaborative.lease.IMessageAcceptor;
 import org.iplantcollaborative.lease.Lease;
-import org.iplantcollaborative.lease.msg.AcceptorConfig;
 import org.iplantcollaborative.lease.msg.ReqestLease;
 import org.iplantcollaborative.lease.msg.ResponseLease;
 import org.iplantcollaborative.utils.JsonSerializer;
@@ -169,22 +167,10 @@ public class ClientRegistrar implements Closeable {
     }
     
     public ResponseLease lease(ReqestLease request) {
-        Lease lease = new Lease();
-        lease.setUser(request.getClient());
-        
-        for(AcceptorConfig config : request.getAcceptor()) {
-            IMessageAcceptor acceptorInstance = AcceptorFactory.getAcceptorInstance(config.getAcceptor(), config.getPattern());
-            if(acceptorInstance != null) {
-                lease.addAcceptor(acceptorInstance);
-            }
-        }
-        
+        Lease lease = new Lease(request);
         this.leases.put(lease.getUser(), lease);
         
-        ResponseLease response = new ResponseLease();
-        response.setClient(request.getClient());
-        response.setLeaseStart(lease.getLeaseTime());
-        
+        ResponseLease response = new ResponseLease(lease);
         return response;
     }
 
@@ -192,6 +178,18 @@ public class ClientRegistrar implements Closeable {
         Lease lease = this.leases.get(author);
         if(lease != null) {
             return lease.accept(msgbody);
+        }
+        return false;
+    }
+    
+    public boolean accept(String msgbody) {
+        MapIterator<Client, Lease> mapIterator = this.leases.mapIterator();
+        while(mapIterator.hasNext()) {
+            mapIterator.next();
+            Lease lease = mapIterator.getValue();
+            if(lease.accept(msgbody)) {
+                return true;
+            }
         }
         return false;
     }

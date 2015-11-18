@@ -18,6 +18,7 @@ package org.iplantcollaborative.lease.msg;
 import java.util.Date;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.iplantcollaborative.lease.Client;
+import org.iplantcollaborative.lease.Lease;
 
 /**
  *
@@ -30,6 +31,11 @@ public class ResponseLease {
     
     public ResponseLease() {
         
+    }
+
+    public ResponseLease(Lease lease) {
+        this.client = lease.getUser();
+        this.leaseStart = lease.getLeaseTime();
     }
     
     @JsonProperty("client")

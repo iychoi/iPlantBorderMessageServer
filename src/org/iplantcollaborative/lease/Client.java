@@ -15,6 +15,9 @@
  */
 package org.iplantcollaborative.lease;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonProperty;
+
 /**
  *
  * @author iychoi
@@ -24,32 +27,49 @@ public class Client {
     private static final String EXCHANGE_NAME = "";
     
     private String userId;
+    private String applicationName;
 
     public Client() {
         
     }
     
+    @JsonProperty("user_id")
     public String getUserId() {
         return userId;
     }
 
+    @JsonProperty("user_id")
     public void setUserId(String userId) {
         this.userId = userId;
     }
     
+    @JsonProperty("application_name")
+    public String getApplicationName() {
+        return applicationName;
+    }
+    
+    @JsonProperty("application_name")
+    public void setApplicationName(String applicationName) {
+        this.applicationName = applicationName;
+    }
+    
+    @JsonIgnore
     public String getExchange() {
         return EXCHANGE_NAME;
     }
     
+    @JsonIgnore
     public String getRoutingKey() {
-        return userId;
+        return userId + "_" + applicationName;
     }
     
+    @JsonIgnore
     @Override
     public int hashCode() {
-        return this.userId.hashCode();
+        return this.userId.hashCode() ^ this.applicationName.hashCode();
     }
 
+    @JsonIgnore
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
@@ -59,11 +79,12 @@ public class Client {
             return false;
         }
         final Client other = (Client) obj;
-        return this.userId.equals(other.userId);
+        return this.userId.equals(other.userId) && this.applicationName.equalsIgnoreCase(other.applicationName);
     }
     
+    @JsonIgnore
     @Override
     public String toString() {
-        return this.userId;
+        return this.userId + "_" + this.applicationName;
     }
 }
