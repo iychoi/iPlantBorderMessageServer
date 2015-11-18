@@ -34,7 +34,9 @@ import org.apache.commons.logging.LogFactory;
 import org.iplantcollaborative.conf.MessageServerConf;
 import org.iplantcollaborative.lease.Client;
 import org.iplantcollaborative.lease.Lease;
-import org.iplantcollaborative.lease.msg.ReqestLease;
+import org.iplantcollaborative.lease.msg.ARequest;
+import org.iplantcollaborative.lease.msg.RequestFactory;
+import org.iplantcollaborative.lease.msg.RequestLease;
 import org.iplantcollaborative.lease.msg.ResponseLease;
 import org.iplantcollaborative.utils.JsonSerializer;
 
@@ -116,13 +118,16 @@ public class ClientRegistrar implements Closeable {
                             
                             LOG.debug("registration - " + message);
                             
-                            ReqestLease req = (ReqestLease) serializer.fromJson(message, ReqestLease.class);
-                            ResponseLease res = lease(req);
+                            ARequest request = RequestFactory.getRequestInstance(message);
                             
-                            String response_json = serializer.toJson(res);
-                            
-                            channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
-                            channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+                            // handle lease request
+                            if(request instanceof RequestLease) {
+                                ResponseLease res = lease((RequestLease)request);
+                                String response_json = serializer.toJson(res);
+
+                                channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
+                                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+                            }
                         } catch (InterruptedException ex) {
                             LOG.error(ex);
                             break;
@@ -166,9 +171,9 @@ public class ClientRegistrar implements Closeable {
         }
     }
     
-    public ResponseLease lease(ReqestLease request) {
+    public ResponseLease lease(RequestLease request) {
         Lease lease = new Lease(request);
-        this.leases.put(lease.getUser(), lease);
+        this.leases.put(lease.getClient(), lease);
         
         ResponseLease response = new ResponseLease(lease);
         return response;

@@ -19,31 +19,19 @@ import org.iplantcollaborative.lease.AcceptorConfig;
 import java.util.ArrayList;
 import java.util.List;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.iplantcollaborative.lease.Client;
 
 /**
  *
  * @author iychoi
  */
-public class ReqestLease {
+public class RequestLease extends ARequest {
 
-    private Client client;
     private List<AcceptorConfig> acceptors = new ArrayList<AcceptorConfig>();
     
-    public ReqestLease() {
+    public RequestLease() {
         
     }
     
-    @JsonProperty("client")
-    public Client getClient() {
-        return client;
-    }
-
-    @JsonProperty("client")
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
     @JsonProperty("acceptors")
     public void addAcceptor(AcceptorConfig acceptorConfig) {
         this.acceptors.add(acceptorConfig);

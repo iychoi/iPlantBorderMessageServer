@@ -18,14 +18,14 @@ package org.iplantcollaborative.lease;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import org.iplantcollaborative.lease.msg.ReqestLease;
+import org.iplantcollaborative.lease.msg.RequestLease;
 
 /**
  *
  * @author iychoi
  */
 public class Lease {
-    private Client user;
+    private Client client;
     private List<IMessageAcceptor> acceptors = new ArrayList<IMessageAcceptor>();
     private Date leaseTime;
 
@@ -33,8 +33,8 @@ public class Lease {
         this.leaseTime = new Date();
     }
     
-    public Lease(ReqestLease request) {
-        this.user = request.getClient();
+    public Lease(RequestLease request) {
+        this.client = request.getClient();
         
         for(AcceptorConfig config : request.getAcceptor()) {
             IMessageAcceptor acceptorInstance = AcceptorFactory.getAcceptorInstance(config.getAcceptor(), config.getPattern());
@@ -46,12 +46,12 @@ public class Lease {
         this.leaseTime = new Date();
     }
     
-    public Client getUser() {
-        return user;
+    public Client getClient() {
+        return client;
     }
 
-    public void setUser(Client user) {
-        this.user = user;
+    public void setClient(Client user) {
+        this.client = user;
     }
 
     public List<IMessageAcceptor> getAcceptors() {

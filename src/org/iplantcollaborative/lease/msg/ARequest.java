@@ -15,34 +15,23 @@
  */
 package org.iplantcollaborative.lease.msg;
 
-import java.util.Date;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.iplantcollaborative.lease.Lease;
+import org.iplantcollaborative.lease.Client;
 
 /**
  *
  * @author iychoi
  */
-public class ResponseLease extends AResponse {
-
-    private Date leaseStart;
+public abstract class ARequest {
+    protected Client client;
     
-    public ResponseLease() {
-        
+    @JsonProperty("client")
+    public Client getClient() {
+        return client;
     }
 
-    public ResponseLease(Lease lease) {
-        this.client = lease.getClient();
-        this.leaseStart = lease.getLeaseTime();
-    }
-    
-    @JsonProperty("lease_start")
-    public Date getLeaseStart() {
-        return leaseStart;
-    }
-
-    @JsonProperty("lease_start")
-    public void setLeaseStart(Date leaseStart) {
-        this.leaseStart = leaseStart;
+    @JsonProperty("client")
+    public void setClient(Client client) {
+        this.client = client;
     }
 }
