@@ -25,6 +25,12 @@ import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.collections4.MapIterator;
@@ -60,6 +66,7 @@ public class ClientRegistrar implements Closeable {
     private Thread workerThread;
     private JsonSerializer serializer;
     private PassiveExpiringMap<Client, Lease> leases = new PassiveExpiringMap<Client, Lease>(DEFAULT_TIMEOUT_MIN, TimeUnit.MINUTES);
+    private Map<String, Set<Client>> clientMap = new HashMap<String, Set<Client>>();
     
     public ClientRegistrar(MessageServerConf serverConf, Binder binder) {
         if(serverConf == null) {
@@ -158,25 +165,62 @@ public class ClientRegistrar implements Closeable {
             }
             this.connection = null;
         }
+        
+        this.leases.clear();
+        this.clientMap.clear();
     }
     
-    public ResponseLease lease(RequestLease request) {
+    public synchronized ResponseLease lease(RequestLease request) {
         Lease lease = new Lease(request);
-        this.leases.put(lease.getClient(), lease);
+        Client client = lease.getClient();
+        
+        this.leases.put(client, lease);
+        
+        Set<Client> clients = this.clientMap.get(client.getUserId());
+        if(clients == null) {
+            clients = new HashSet<Client>();
+            this.clientMap.put(client.getUserId(), clients);
+        }
+        
+        if(!clients.contains(client)) {
+            clients.add(client);
+        }
         
         ResponseLease response = new ResponseLease(lease);
         return response;
     }
+    
+    public synchronized List<Client> getAcceptClients(String clientUserId, String msgbody) {
+        List<Client> acceptedClients = new ArrayList<Client>();
+        List<Client> toberemoved = new ArrayList<Client>();
+        Set<Client> clients = this.clientMap.get(clientUserId);
+        if(clients != null) {
+            for(Client client : clients) {
+                Lease lease = this.leases.get(client);
+                if(lease != null) {
+                    if(lease.accept(msgbody)) {
+                        acceptedClients.add(client);
+                    }
+                } else {
+                    toberemoved.add(client);
+                }
+            }
+        }
+        
+        clients.removeAll(toberemoved);
+        
+        return acceptedClients;
+    }
 
-    public boolean accept(Client author, String msgbody) {
-        Lease lease = this.leases.get(author);
+    public synchronized boolean accept(Client client, String msgbody) {
+        Lease lease = this.leases.get(client);
         if(lease != null) {
             return lease.accept(msgbody);
         }
         return false;
     }
     
-    public boolean accept(String msgbody) {
+    public synchronized boolean accept(String msgbody) {
         MapIterator<Client, Lease> mapIterator = this.leases.mapIterator();
         while(mapIterator.hasNext()) {
             mapIterator.next();
