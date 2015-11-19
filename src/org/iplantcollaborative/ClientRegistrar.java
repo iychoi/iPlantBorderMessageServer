@@ -174,6 +174,8 @@ public class ClientRegistrar implements Closeable {
         Lease lease = new Lease(request);
         Client client = lease.getClient();
         
+        LOG.info("registering a client - " + client.toString());
+        
         this.leases.put(client, lease);
         
         Set<Client> clients = this.clientMap.get(client.getUserId());
