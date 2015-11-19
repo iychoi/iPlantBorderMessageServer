@@ -156,30 +156,25 @@ public class MessageProcessor implements Closeable {
         return null;
     }
     
-    private Client extractClientFromAuthor(User author) {
-        Client client = new Client();
-        client.setUserId(author.getName());
-        return client;
+    private String extractClientUserIdFromAuthor(User author) {
+        return author.getName();
     }
     
-    private Client extractClientFromPath(String path) {
-        String name = extractUserNameFromPath(path);
-        Client client = new Client();
-        client.setUserId(name);
-        return client;
+    private String extractClientUserIdFromPath(String path) {
+        return extractUserNameFromPath(path);
     }
     
-    private Client[] extractClientsFromReaders(List<User> readers) {
-        Client[] clients = new Client[readers.size()];
+    private String[] extractClientUserIdsFromReaders(List<User> readers) {
+        String[] userIds = new String[readers.size()];
         
         int i=0;
         for(User reader : readers) {
-            Client client = extractClientFromAuthor(reader);
-            clients[i] = client;
+            String userId = extractClientUserIdFromAuthor(reader);
+            userIds[i] = userId;
             i++;
         }
         
-        return clients;
+        return userIds;
     }
     
     private Message process_collection_add(String routingKey, String message) throws IOException {
@@ -200,22 +195,16 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
-            Client author = extractClientFromAuthor(ca.getAuthor());
+            String author = extractClientUserIdFromAuthor(ca.getAuthor());
             if (author != null) {
-                if (!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathowner = extractClientFromPath(ca.getPath());
-            if (pathowner != null) {
-                if (!msg.hasRecipient(pathowner)) {
-                    if (this.binder.getClientRegistrar().accept(pathowner, msgbody)) {
-                        msg.addRecipient(pathowner);
-                    }
-                }
+            String pathowner = extractClientUserIdFromPath(ca.getPath());
+            if (pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -243,22 +232,16 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
-            Client author = extractClientFromAuthor(cr.getAuthor());
+            String author = extractClientUserIdFromAuthor(cr.getAuthor());
             if (author != null) {
-                if (!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathowner = extractClientFromPath(cr.getPath());
-            if (pathowner != null) {
-                if (!msg.hasRecipient(pathowner)) {
-                    if (this.binder.getClientRegistrar().accept(pathowner, msgbody)) {
-                        msg.addRecipient(pathowner);
-                    }
-                }
+            String pathowner = extractClientUserIdFromPath(cr.getPath());
+            if (pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -286,31 +269,22 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
-            Client author = extractClientFromAuthor(cm.getAuthor());
+            String author = extractClientUserIdFromAuthor(cm.getAuthor());
             if(author != null) {
-                if(!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathownerOld = extractClientFromPath(cm.getOldPath());
-            if(pathownerOld != null) {
-                if(!msg.hasRecipient(pathownerOld)) {
-                    if (this.binder.getClientRegistrar().accept(pathownerOld, msgbody)) {
-                        msg.addRecipient(pathownerOld);
-                    }
-                }
+            String pathownerOld = extractClientUserIdFromPath(cm.getOldPath());
+            if(pathownerOld != null && !pathownerOld.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerOld, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathownerNew = extractClientFromPath(cm.getNewPath());
-            if(pathownerNew != null) {
-                if(!msg.hasRecipient(pathownerNew)) {
-                    if (this.binder.getClientRegistrar().accept(pathownerNew, msgbody)) {
-                        msg.addRecipient(pathownerNew);
-                    }
-                }
+            String pathownerNew = extractClientUserIdFromPath(cm.getNewPath());
+            if(pathownerNew != null && !pathownerNew.equals(author) && !pathownerNew.equals(pathownerOld)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerNew, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -338,22 +312,16 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
-            Client author = extractClientFromAuthor(cam.getAuthor());
+            String author = extractClientUserIdFromAuthor(cam.getAuthor());
             if(author != null) {
-                if(!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathowner = extractClientFromPath(cam.getPath());
-            if(pathowner != null) {
-                if(!msg.hasRecipient(pathowner)) {
-                    if (this.binder.getClientRegistrar().accept(pathowner, msgbody)) {
-                        msg.addRecipient(pathowner);
-                    }
-                }
+            String pathowner = extractClientUserIdFromPath(cam.getPath());
+            if(pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -381,31 +349,22 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
-            Client author = extractClientFromAuthor(doa.getAuthor());
+            String author = extractClientUserIdFromAuthor(doa.getAuthor());
             if(author != null) {
-                if(!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client creator = extractClientFromAuthor(doa.getCreator());
-            if(creator != null) {
-                if(!msg.hasRecipient(creator)) {
-                    if (this.binder.getClientRegistrar().accept(creator, msgbody)) {
-                        msg.addRecipient(creator);
-                    }
-                }
+            String creator = extractClientUserIdFromAuthor(doa.getCreator());
+            if(creator != null && !creator.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(creator, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathowner = extractClientFromPath(doa.getPath());
-            if(pathowner != null) {
-                if(!msg.hasRecipient(pathowner)) {
-                    if (this.binder.getClientRegistrar().accept(pathowner, msgbody)) {
-                        msg.addRecipient(pathowner);
-                    }
-                }
+            String pathowner = extractClientUserIdFromPath(doa.getPath());
+            if(pathowner != null && !pathowner.equals(author) && !pathowner.equals(creator)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -433,22 +392,16 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
-            Client author = extractClientFromAuthor(dor.getAuthor());
+            String author = extractClientUserIdFromAuthor(dor.getAuthor());
             if(author != null) {
-                if(!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathowner = extractClientFromPath(dor.getPath());
-            if(pathowner != null) {
-                if(!msg.hasRecipient(pathowner)) {
-                    if (this.binder.getClientRegistrar().accept(pathowner, msgbody)) {
-                        msg.addRecipient(pathowner);
-                    }
-                }
+            String pathowner = extractClientUserIdFromPath(dor.getPath());
+            if(pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -479,31 +432,22 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
 
-            Client author = extractClientFromAuthor(dom.getAuthor());
+            String author = extractClientUserIdFromAuthor(dom.getAuthor());
             if(author != null) {
-                if(!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client creator = extractClientFromAuthor(dom.getCreator());
-            if(creator != null) {
-                if(!msg.hasRecipient(creator)) {
-                    if (this.binder.getClientRegistrar().accept(creator, msgbody)) {
-                        msg.addRecipient(creator);
-                    }
-                }
+            String creator = extractClientUserIdFromAuthor(dom.getCreator());
+            if(creator != null && !creator.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(creator, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathowner = extractClientFromPath(dom.getPath());
-            if(pathowner != null) {
-                if(!msg.hasRecipient(pathowner)) {
-                    if (this.binder.getClientRegistrar().accept(pathowner, msgbody)) {
-                        msg.addRecipient(pathowner);
-                    }
-                }
+            String pathowner = extractClientUserIdFromPath(dom.getPath());
+            if(pathowner != null && !pathowner.equals(author) && !pathowner.equals(creator)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -531,31 +475,22 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
-            Client author = extractClientFromAuthor(dom.getAuthor());
+            String author = extractClientUserIdFromAuthor(dom.getAuthor());
             if(author != null) {
-                if(!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathownerOld = extractClientFromPath(dom.getOldPath());
-            if(pathownerOld != null) {
-                if(!msg.hasRecipient(pathownerOld)) {
-                    if (this.binder.getClientRegistrar().accept(pathownerOld, msgbody)) {
-                        msg.addRecipient(pathownerOld);
-                    }
-                }
+            String pathownerOld = extractClientUserIdFromPath(dom.getOldPath());
+            if(pathownerOld != null && !pathownerOld.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerOld, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client pathownerNew = extractClientFromPath(dom.getNewPath());
-            if(pathownerNew != null) {
-                if(!msg.hasRecipient(pathownerNew)) {
-                    if (this.binder.getClientRegistrar().accept(pathownerNew, msgbody)) {
-                        msg.addRecipient(pathownerNew);
-                    }
-                }
+            String pathownerNew = extractClientUserIdFromPath(dom.getNewPath());
+            if(pathownerNew != null && !pathownerNew.equals(author) && !pathownerNew.equals(pathownerOld)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerNew, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);
@@ -586,31 +521,24 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
 
-            Client author = extractClientFromAuthor(doam.getAuthor());
+            String author = extractClientUserIdFromAuthor(doam.getAuthor());
             if(author != null) {
-                if(!msg.hasRecipient(author)) {
-                    if (this.binder.getClientRegistrar().accept(author, msgbody)) {
-                        msg.addRecipient(author);
-                    }
-                }
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
+            }
+            
+            String pathowner = extractClientUserIdFromPath(doam.getPath());
+            if(pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
-            Client[] users = extractClientsFromReaders(doam.getUser());
+            String[] users = extractClientUserIdsFromReaders(doam.getUser());
             if(users != null) {
-                for(Client user : users) {
-                    if(!msg.hasRecipient(user)) {
-                        if (this.binder.getClientRegistrar().accept(user, msgbody)) {
-                            msg.addRecipient(user);
-                        }
-                    }
-                }
-            }
-
-            Client pathowner = extractClientFromPath(doam.getPath());
-            if(pathowner != null) {
-                if(!msg.hasRecipient(pathowner)) {
-                    if (this.binder.getClientRegistrar().accept(pathowner, msgbody)) {
-                        msg.addRecipient(pathowner);
+                for(String user : users) {
+                    if(user != null && !user.equals(author) && !user.equals(pathowner)) {
+                        List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(user, msgbody);
+                        msg.addRecipient(clients);
                     }
                 }
             }
