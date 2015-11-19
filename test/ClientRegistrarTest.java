@@ -17,9 +17,12 @@
 import java.io.File;
 import java.io.IOException;
 import org.apache.log4j.BasicConfigurator;
+import org.iplantcollaborative.ClientRegistrar;
 import org.iplantcollaborative.IPlantBorderMessageServer;
 import org.iplantcollaborative.conf.BMSConf;
-import org.iplantcollaborative.irods.DataStoreClient;
+import org.iplantcollaborative.lease.Client;
+import org.iplantcollaborative.lease.msg.RequestLease;
+import org.iplantcollaborative.lease.msg.ResponseLease;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -31,12 +34,12 @@ import org.junit.Test;
  *
  * @author iychoi
  */
-public class DataStoreClientTest {
+public class ClientRegistrarTest {
     
     private BMSConf conf;
     private IPlantBorderMessageServer server;
     
-    public DataStoreClientTest() {
+    public ClientRegistrarTest() {
     }
     
     @BeforeClass
@@ -63,29 +66,17 @@ public class DataStoreClientTest {
     }
 
     @Test
-    public void testUUIDConvDataObject() throws InterruptedException, IOException {
-        DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
-        String dataObjectPath = datastoreClient.convertUUIDToPath("83015514-8db6-11e5-9d66-1a5a300ff36f");
-        Assert.assertNotNull(dataObjectPath);
-        Assert.assertEquals("uuid of an object", "/iplant/home/iychoi/test.txt", dataObjectPath);
-    }
-    
-    @Test
-    public void testUUIDConvCollection() throws InterruptedException, IOException {
-        DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
-        String collectionPath = datastoreClient.convertUUIDToPath("6d7da718-8db8-11e5-9d66-1a5a300ff36f");
-        Assert.assertNotNull(collectionPath);
-        Assert.assertEquals("uuid of a collection", "/iplant/home/iychoi/testColl", collectionPath);
+    public void testLease() throws InterruptedException, IOException {
+        ClientRegistrar registrar = this.server.getRegistrar();
+        RequestLease req = new RequestLease();
+        Client client = new Client();
+        client.setApplicationName("AGTest");
+        client.setUserId("iychoi");
+        req.setClient(client);
         
-        String notExistUUID = datastoreClient.convertUUIDToPath("6d7da718-8db8-11e5-9d66-1a5a300ffd6f");
-        Assert.assertNull(notExistUUID);
+        ResponseLease res = registrar.lease(req);
+        
+        Assert.assertNotNull(res);
+        Assert.assertEquals("client obj", req.getClient(), res.getClient());
     }
-    
-    @Test
-    public void testUUIDConvNotExist() throws InterruptedException, IOException {
-        DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
-        String notExistUUID = datastoreClient.convertUUIDToPath("6d7da718-8db8-11e5-9d66-1a5a300ffd6f");
-        Assert.assertNull(notExistUUID);
-    }
-    
 }
