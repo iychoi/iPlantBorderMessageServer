@@ -26,14 +26,16 @@ import org.iplantcollaborative.lease.Lease;
 public class ResponseLease extends AResponse {
 
     private Date leaseStart;
+    private Date leaseExpire;
     
     public ResponseLease() {
         
     }
 
-    public ResponseLease(Lease lease) {
+    public ResponseLease(Lease lease, long leaseTerm) {
         this.client = lease.getClient();
         this.leaseStart = lease.getLeaseTime();
+        this.leaseExpire = new Date(this.leaseStart.getTime() + leaseTerm);
     }
     
     @JsonProperty("lease_start")
@@ -44,5 +46,15 @@ public class ResponseLease extends AResponse {
     @JsonProperty("lease_start")
     public void setLeaseStart(Date leaseStart) {
         this.leaseStart = leaseStart;
+    }
+    
+    @JsonProperty("lease_expire")
+    public Date getLeaseExpire() {    
+        return leaseExpire;
+    }
+    
+    @JsonProperty("lease_expire")
+    public void setLeaseExpire(Date leaseExpire) {
+        this.leaseExpire = leaseExpire;
     }
 }

@@ -98,6 +98,8 @@ public class MessageSubscriber implements Closeable {
                 } else {
                     LOG.error("processor not registered");
                 }
+                
+                channel.basicAck(envelope.getDeliveryTag(), false);
             }
         };
         

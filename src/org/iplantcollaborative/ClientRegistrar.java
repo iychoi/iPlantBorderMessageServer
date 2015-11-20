@@ -124,8 +124,9 @@ public class ClientRegistrar implements Closeable {
                     String response_json = serializer.toJson(res);
 
                     channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
-                    channel.basicAck(envelope.getDeliveryTag(), false);
                 }
+                
+                channel.basicAck(envelope.getDeliveryTag(), false);
             }
         };
         
@@ -188,7 +189,7 @@ public class ClientRegistrar implements Closeable {
             clients.add(client);
         }
         
-        ResponseLease response = new ResponseLease(lease);
+        ResponseLease response = new ResponseLease(lease, DEFAULT_TIMEOUT_MIN * 60 * 1000);
         return response;
     }
     
