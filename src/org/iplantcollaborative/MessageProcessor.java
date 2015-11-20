@@ -117,14 +117,14 @@ public class MessageProcessor implements Closeable {
                     try {
                         publisher.publish(msg);
                     } catch (IOException ex) {
-                        LOG.error("publish failed " + ex.toString());
+                        LOG.error(ex);
                     }
                 } else {
                     LOG.error("processor not registered");
                 }
             }
         } catch (Exception ex) {
-            LOG.error("process failed " + ex.toString());
+            LOG.error(ex);
         }
     }
 

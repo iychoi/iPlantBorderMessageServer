@@ -101,13 +101,6 @@ public class CollectionAclMod {
     public void addUser(User user) {
         this.user.add(user);
     }
-    
-    @JsonProperty("user")
-    public void addUser(User[] user) {
-        for(User u : user) {
-            this.user.add(u);
-        }
-    }
 
     @JsonProperty("inherit")
     public boolean isInherit() {
