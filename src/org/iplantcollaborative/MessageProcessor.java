@@ -108,6 +108,7 @@ public class MessageProcessor implements Closeable {
                     break;
                 default:
                     LOG.info("message has no processor - ignored - " + routingKey);
+                    LOG.info(message);
                     break;
             }
 
