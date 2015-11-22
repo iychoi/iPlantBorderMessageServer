@@ -21,32 +21,39 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author iychoi
  */
-public class CollectionMv extends ADataStoreMessage {
+public class MetaDatum {
 
-    private String old_path;
-    private String new_path;
+    private String attribute;
+    private String value;
+    private String unit;
     
-    public CollectionMv() {
-        
-    }
-    
-    @JsonProperty("old-path")
-    public String getOldPath() {
-        return old_path;
+    @JsonProperty("attribute")
+    public String getAttribute() {
+        return attribute;
     }
 
-    @JsonProperty("old-path")
-    public void setOldPath(String old_path) {
-        this.old_path = old_path;
-    }
-    
-    @JsonProperty("new-path")
-    public String getNewPath() {
-        return new_path;
+    @JsonProperty("attribute")
+    public void setAttribute(String attribute) {
+        this.attribute = attribute;
     }
 
-    @JsonProperty("new-path")
-    public void setNewPath(String new_path) {
-        this.new_path = new_path;
+    @JsonProperty("value")
+    public String getValue() {
+        return value;
+    }
+
+    @JsonProperty("value")
+    public void setValue(String value) {
+        this.value = value;
+    }
+    
+    @JsonProperty("unit")
+    public String getUnit() {
+        return unit;
+    }
+
+    @JsonProperty("unit")
+    public void setUnit(String unit) {
+        this.unit = unit;
     }
 }

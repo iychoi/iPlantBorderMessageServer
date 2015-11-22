@@ -208,9 +208,9 @@ public class ClientRegistrar implements Closeable {
                     toberemoved.add(client);
                 }
             }
+            
+            clients.removeAll(toberemoved);
         }
-        
-        clients.removeAll(toberemoved);
         
         return acceptedClients;
     }

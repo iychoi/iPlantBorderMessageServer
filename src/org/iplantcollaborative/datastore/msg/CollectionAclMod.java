@@ -15,57 +15,22 @@
  */
 package org.iplantcollaborative.datastore.msg;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  *
  * @author iychoi
  */
-public class CollectionAclMod {
+public class CollectionAclMod extends ADataStoreMessage {
 
-    private User author;
-    private String entity;
-    private String path;
     private boolean recursive;
     private String permission;
-    private List<User> user = new ArrayList<User>();
+    private User user;
     private boolean inherit;
     
     public CollectionAclMod() {
         
     }
-    
-    @JsonProperty("author")
-    public User getAuthor() {
-        return author;
-    }
-
-    @JsonProperty("author")
-    public void setAuthor(User author) {
-        this.author = author;
-    }
-
-    @JsonProperty("entity")
-    public String getEntity() {
-        return entity;
-    }
-
-    @JsonProperty("entity")
-    public void setEntity(String entity) {
-        this.entity = entity;
-    }
-
-    @JsonProperty("path")
-    public String getPath() {
-        return path;
-    }
-
-    @JsonProperty("path")
-    public void setPath(String path) {
-        this.path = path;
-    }   
     
     @JsonProperty("recursive")
     public boolean isRecursive() {
@@ -88,18 +53,13 @@ public class CollectionAclMod {
     }
 
     @JsonProperty("user")
-    public List<User> getUser() {
+    public User getUser() {
         return user;
     }
 
     @JsonProperty("user")
-    public void addUser(List<User> user) {
-        this.user.addAll(user);
-    }
-    
-    @JsonProperty("user")
-    public void addUser(User user) {
-        this.user.add(user);
+    public void setUser(User user) {
+        this.user = user;
     }
 
     @JsonProperty("inherit")

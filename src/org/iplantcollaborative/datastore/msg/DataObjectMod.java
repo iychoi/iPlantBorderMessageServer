@@ -21,11 +21,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author iychoi
  */
-public class DataObjectMod {
+public class DataObjectMod extends ADataStoreMessage {
 
-    private User author;
-    private String entity;
-    private String path;
     private User creator;
     private long size;
     private String type;
@@ -33,37 +30,7 @@ public class DataObjectMod {
     public DataObjectMod() {
         
     }
-    
-    @JsonProperty("author")
-    public User getAuthor() {
-        return author;
-    }
 
-    @JsonProperty("author")
-    public void setAuthor(User author) {
-        this.author = author;
-    }
-
-    @JsonProperty("entity")
-    public String getEntity() {
-        return entity;
-    }
-
-    @JsonProperty("entity")
-    public void setEntity(String entity) {
-        this.entity = entity;
-    }
-
-    @JsonProperty("path")
-    public String getPath() {
-        return path;
-    }
-
-    @JsonProperty("path")
-    public void setPath(String path) {
-        this.path = path;
-    }   
-    
     @JsonProperty("creator")
     public User getCreator() {
         return creator;

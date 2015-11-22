@@ -21,32 +21,9 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author iychoi
  */
-public class CollectionMv extends ADataStoreMessage {
+public class DataObjectMetadataMod extends ADataStoreMessage {
 
-    private String old_path;
-    private String new_path;
-    
-    public CollectionMv() {
+    public DataObjectMetadataMod() {
         
-    }
-    
-    @JsonProperty("old-path")
-    public String getOldPath() {
-        return old_path;
-    }
-
-    @JsonProperty("old-path")
-    public void setOldPath(String old_path) {
-        this.old_path = old_path;
-    }
-    
-    @JsonProperty("new-path")
-    public String getNewPath() {
-        return new_path;
-    }
-
-    @JsonProperty("new-path")
-    public void setNewPath(String new_path) {
-        this.new_path = new_path;
     }
 }

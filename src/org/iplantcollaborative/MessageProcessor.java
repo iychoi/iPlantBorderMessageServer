@@ -27,10 +27,13 @@ import org.codehaus.jackson.node.ObjectNode;
 import org.iplantcollaborative.conf.DataStoreConf;
 import org.iplantcollaborative.datastore.msg.CollectionAclMod;
 import org.iplantcollaborative.datastore.msg.CollectionAdd;
+import org.iplantcollaborative.datastore.msg.CollectionMetadataAdd;
 import org.iplantcollaborative.datastore.msg.CollectionMv;
 import org.iplantcollaborative.datastore.msg.CollectionRm;
 import org.iplantcollaborative.datastore.msg.DataObjectAclMod;
 import org.iplantcollaborative.datastore.msg.DataObjectAdd;
+import org.iplantcollaborative.datastore.msg.DataObjectMetadataAdd;
+import org.iplantcollaborative.datastore.msg.DataObjectMetadataMod;
 import org.iplantcollaborative.datastore.msg.DataObjectMod;
 import org.iplantcollaborative.datastore.msg.DataObjectMv;
 import org.iplantcollaborative.datastore.msg.DataObjectRm;
@@ -91,6 +94,9 @@ public class MessageProcessor implements Closeable {
                 case "collection.acl.mod":
                     msg = process_collection_acl_mod(routingKey, message);
                     break;
+                case "collection.sys-metadata.add":
+                    msg = process_collection_metadata_add(routingKey, message);
+                    break;
                 case "data-object.add":
                     msg = process_dataobject_add(routingKey, message);
                     break;
@@ -105,6 +111,12 @@ public class MessageProcessor implements Closeable {
                     break;
                 case "data-object.acl.mod":
                     msg = process_dataobject_acl_mod(routingKey, message);
+                    break;
+                case "data-object.sys-metadata.add":
+                    msg = process_dataobject_metadata_add(routingKey, message);
+                    break;
+                case "data-object.sys-metadata.mod":
+                    msg = process_dataobject_metadata_mod(routingKey, message);
                     break;
                 default:
                     LOG.info("message has no processor - ignored - " + routingKey);
@@ -126,23 +138,13 @@ public class MessageProcessor implements Closeable {
             }
         } catch (Exception ex) {
             LOG.error(ex);
+            LOG.info(message);
         }
-    }
-
-    private String addOperation(String json, String operation) throws IOException {
-        StringWriter writer = new StringWriter();
-        ObjectMapper m = new ObjectMapper();
-        
-        JsonNode rootNode = m.readTree(json);
-        ((ObjectNode)rootNode).put("operation", operation);
-        
-        m.writeValue(writer, rootNode);
-        return writer.getBuffer().toString();
     }
     
     private String extractUserNameFromPath(String path) {
         if(path == null || path.isEmpty()) {
-            throw new IllegalArgumentException("path is null or empty");
+            return null;
         }
         
         int idx = path.indexOf("/home/");
@@ -164,6 +166,15 @@ public class MessageProcessor implements Closeable {
     private String extractClientUserIdFromPath(String path) {
         return extractUserNameFromPath(path);
     }
+
+    private String[] extractClientUserIdsFromReaders(User reader) {
+        String[] userIds = new String[1];
+        
+        String userId = extractClientUserIdFromAuthor(reader);
+        userIds[0] = userId;
+        
+        return userIds;
+    }
     
     private String[] extractClientUserIdsFromReaders(List<User> readers) {
         String[] userIds = new String[readers.size()];
@@ -181,17 +192,20 @@ public class MessageProcessor implements Closeable {
     private Message process_collection_add(String routingKey, String message) throws IOException {
         CollectionAdd ca = (CollectionAdd) this.serializer.fromJson(message, CollectionAdd.class);
         
+        ca.setEntityPath(ca.getPath());
+        
         // cache uuid-path
         if(ca.getEntity() != null && !ca.getEntity().isEmpty() && 
-                ca.getPath() != null && !ca.getPath().isEmpty()) {
-            this.cache.cache(ca.getEntity(), ca.getPath());
+                ca.getEntityPath() != null && !ca.getEntityPath().isEmpty()) {
+            this.cache.cache(ca.getEntity(), ca.getEntityPath());
         }
         
         if(ca.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String msgbody = addOperation(message, routingKey);
+        ca.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(ca);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -218,17 +232,20 @@ public class MessageProcessor implements Closeable {
     private Message process_collection_rm(String routingKey, String message) throws IOException {
         CollectionRm cr = (CollectionRm) this.serializer.fromJson(message, CollectionRm.class);
         
+        cr.setEntityPath(cr.getPath());
+        
         // cache uuid-path
         if(cr.getEntity() != null && !cr.getEntity().isEmpty() && 
-                cr.getPath() != null && !cr.getPath().isEmpty()) {
-            this.cache.cache(cr.getEntity(), cr.getPath());
+                cr.getEntityPath() != null && !cr.getEntityPath().isEmpty()) {
+            this.cache.cache(cr.getEntity(), cr.getEntityPath());
         }
         
         if(cr.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String msgbody = addOperation(message, routingKey);
+        cr.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(cr);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -255,17 +272,20 @@ public class MessageProcessor implements Closeable {
     private Message process_collection_mv(String routingKey, String message) throws IOException {
         CollectionMv cm = (CollectionMv) this.serializer.fromJson(message, CollectionMv.class);
         
+        cm.setEntityPath(cm.getNewPath());
+        
         // cache uuid-path
         if(cm.getEntity() != null && !cm.getEntity().isEmpty() && 
-                cm.getNewPath() != null && !cm.getNewPath().isEmpty()) {
-            this.cache.cache(cm.getEntity(), cm.getNewPath());
+                cm.getEntityPath() != null && !cm.getEntityPath().isEmpty()) {
+            this.cache.cache(cm.getEntity(), cm.getEntityPath());
         }
         
         if(cm.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String msgbody = addOperation(message, routingKey);
+        cm.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(cm);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -298,17 +318,21 @@ public class MessageProcessor implements Closeable {
     private Message process_collection_acl_mod(String routingKey, String message) throws IOException {
         CollectionAclMod cam = (CollectionAclMod) this.serializer.fromJson(message, CollectionAclMod.class);
         
+        String entityPath = convertUUIDToPath(cam.getEntity());
+        cam.setEntityPath(entityPath);
+        
         // cache uuid-path
         if(cam.getEntity() != null && !cam.getEntity().isEmpty() && 
-                cam.getPath()!= null && !cam.getPath().isEmpty()) {
-            this.cache.cache(cam.getEntity(), cam.getPath());
+                cam.getEntityPath() != null && !cam.getEntityPath().isEmpty()) {
+            this.cache.cache(cam.getEntity(), cam.getEntityPath());
         }
         
         if(cam.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String msgbody = addOperation(message, routingKey);
+        cam.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(cam);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -319,7 +343,48 @@ public class MessageProcessor implements Closeable {
                 msg.addRecipient(clients);
             }
 
-            String pathowner = extractClientUserIdFromPath(cam.getPath());
+            String pathowner = extractClientUserIdFromPath(cam.getEntityPath());
+            if(pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
+            }
+
+            msg.setMessageBody(msgbody);
+            return msg;
+        } else {
+            return null;
+        }
+    }
+    
+    private Message process_collection_metadata_add(String routingKey, String message) throws IOException {
+        CollectionMetadataAdd cma = (CollectionMetadataAdd) this.serializer.fromJson(message, CollectionMetadataAdd.class);
+        
+        if(cma.getAuthor() == null) {
+            throw new IOException("message has no author field");
+        }
+        
+        String entityPath = convertUUIDToPath(cma.getEntity());
+        cma.setEntityPath(entityPath);
+        
+        // cache uuid-path
+        if(cma.getEntity() != null && !cma.getEntity().isEmpty() && 
+                cma.getEntityPath() != null && !cma.getEntityPath().isEmpty()) {
+            this.cache.cache(cma.getEntity(), cma.getEntityPath());
+        }
+        
+        cma.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(cma);
+        
+        if(this.binder.getClientRegistrar() != null) {
+            Message msg = new Message();
+            
+            String author = extractClientUserIdFromAuthor(cma.getAuthor());
+            if (author != null) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
+            }
+            
+            String pathowner = extractClientUserIdFromPath(cma.getEntityPath());
             if(pathowner != null && !pathowner.equals(author)) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
@@ -335,17 +400,20 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_add(String routingKey, String message) throws IOException {
         DataObjectAdd doa = (DataObjectAdd) this.serializer.fromJson(message, DataObjectAdd.class);
         
+        doa.setEntityPath(doa.getPath());
+        
         // cache uuid-path
         if(doa.getEntity() != null && !doa.getEntity().isEmpty() && 
-                doa.getPath()!= null && !doa.getPath().isEmpty()) {
-            this.cache.cache(doa.getEntity(), doa.getPath());
+                doa.getEntityPath()!= null && !doa.getEntityPath().isEmpty()) {
+            this.cache.cache(doa.getEntity(), doa.getEntityPath());
         }
         
         if(doa.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String msgbody = addOperation(message, routingKey);
+        doa.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(doa);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -378,17 +446,20 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_rm(String routingKey, String message) throws IOException {
         DataObjectRm dor = (DataObjectRm) this.serializer.fromJson(message, DataObjectRm.class);
         
+        dor.setEntityPath(dor.getPath());
+        
         // cache uuid-path
         if(dor.getEntity() != null && !dor.getEntity().isEmpty() && 
-                dor.getPath()!= null && !dor.getPath().isEmpty()) {
-            this.cache.cache(dor.getEntity(), dor.getPath());
+                dor.getEntityPath()!= null && !dor.getEntityPath().isEmpty()) {
+            this.cache.cache(dor.getEntity(), dor.getEntityPath());
         }
         
         if(dor.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String msgbody = addOperation(message, routingKey);
+        dor.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(dor);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -415,20 +486,21 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_mod(String routingKey, String message) throws IOException {
         DataObjectMod dom = (DataObjectMod) this.serializer.fromJson(message, DataObjectMod.class);
         
+        String entityPath = convertUUIDToPath(dom.getEntity());
+        dom.setEntityPath(entityPath);
+        
+        // cache uuid-path
+        if(dom.getEntity() != null && !dom.getEntity().isEmpty() && 
+                dom.getEntityPath()!= null && !dom.getEntityPath().isEmpty()) {
+            this.cache.cache(dom.getEntity(), dom.getEntityPath());
+        }
+        
         if(dom.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String path = convertUUIDToPath(dom.getEntity());
-        dom.setPath(path);
-        
-        // cache uuid-path
-        if(dom.getEntity() != null && !dom.getEntity().isEmpty() && 
-                dom.getPath()!= null && !dom.getPath().isEmpty()) {
-            this.cache.cache(dom.getEntity(), dom.getPath());
-        }
-        
-        String msgbody = addOperation(this.serializer.toJson(dom), routingKey);
+        dom.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(dom);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -445,7 +517,7 @@ public class MessageProcessor implements Closeable {
                 msg.addRecipient(clients);
             }
 
-            String pathowner = extractClientUserIdFromPath(dom.getPath());
+            String pathowner = extractClientUserIdFromPath(dom.getEntityPath());
             if(pathowner != null && !pathowner.equals(author) && !pathowner.equals(creator)) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
@@ -461,17 +533,20 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_mv(String routingKey, String message) throws IOException {
         DataObjectMv dom = (DataObjectMv) this.serializer.fromJson(message, DataObjectMv.class);
         
+        dom.setEntityPath(dom.getNewPath());
+        
         // cache uuid-path
         if(dom.getEntity() != null && !dom.getEntity().isEmpty() && 
-                dom.getNewPath()!= null && !dom.getNewPath().isEmpty()) {
-            this.cache.cache(dom.getEntity(), dom.getNewPath());
+                dom.getEntityPath()!= null && !dom.getEntityPath().isEmpty()) {
+            this.cache.cache(dom.getEntity(), dom.getEntityPath());
         }
         
         if(dom.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String msgbody = addOperation(message, routingKey);
+        dom.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(dom);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -504,20 +579,21 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_acl_mod(String routingKey, String message) throws IOException {
         DataObjectAclMod doam = (DataObjectAclMod) this.serializer.fromJson(message, DataObjectAclMod.class);
         
+        String entityPath = convertUUIDToPath(doam.getEntity());
+        doam.setEntityPath(entityPath);
+        
+        // cache uuid-path
+        if(doam.getEntity() != null && !doam.getEntity().isEmpty() && 
+                doam.getEntityPath()!= null && !doam.getEntityPath().isEmpty()) {
+            this.cache.cache(doam.getEntity(), doam.getEntityPath());
+        }
+        
         if(doam.getAuthor() == null) {
             throw new IOException("message has no author field");
         }
         
-        String path = convertUUIDToPath(doam.getEntity());
-        doam.setPath(path);
-        
-        // cache uuid-path
-        if(doam.getEntity() != null && !doam.getEntity().isEmpty() && 
-                doam.getPath()!= null && !doam.getPath().isEmpty()) {
-            this.cache.cache(doam.getEntity(), doam.getPath());
-        }
-        
-        String msgbody = addOperation(this.serializer.toJson(doam), routingKey);
+        doam.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(doam);
         
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
@@ -528,7 +604,7 @@ public class MessageProcessor implements Closeable {
                 msg.addRecipient(clients);
             }
             
-            String pathowner = extractClientUserIdFromPath(doam.getPath());
+            String pathowner = extractClientUserIdFromPath(doam.getEntityPath());
             if(pathowner != null && !pathowner.equals(author)) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
@@ -542,6 +618,88 @@ public class MessageProcessor implements Closeable {
                         msg.addRecipient(clients);
                     }
                 }
+            }
+
+            msg.setMessageBody(msgbody);
+            return msg;
+        } else {
+            return null;
+        }
+    }
+    
+    private Message process_dataobject_metadata_add(String routingKey, String message) throws IOException {
+        DataObjectMetadataAdd doma = (DataObjectMetadataAdd) this.serializer.fromJson(message, DataObjectMetadataAdd.class);
+        
+        String entityPath = convertUUIDToPath(doma.getEntity());
+        doma.setEntityPath(entityPath);
+        
+        // cache uuid-path
+        if(doma.getEntity() != null && !doma.getEntity().isEmpty() && 
+                doma.getEntityPath()!= null && !doma.getEntityPath().isEmpty()) {
+            this.cache.cache(doma.getEntity(), doma.getEntityPath());
+        }
+        
+        if(doma.getAuthor() == null) {
+            throw new IOException("message has no author field");
+        }
+        
+        doma.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(doma);
+        
+        if(this.binder.getClientRegistrar() != null) {
+            Message msg = new Message();
+            
+            String author = extractClientUserIdFromAuthor(doma.getAuthor());
+            if(author != null) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
+            }
+            
+            String pathowner = extractClientUserIdFromPath(doma.getEntityPath());
+            if(pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
+            }
+
+            msg.setMessageBody(msgbody);
+            return msg;
+        } else {
+            return null;
+        }
+    }
+    
+    private Message process_dataobject_metadata_mod(String routingKey, String message) throws IOException {
+        DataObjectMetadataMod domm = (DataObjectMetadataMod) this.serializer.fromJson(message, DataObjectMetadataMod.class);
+        
+        String entityPath = convertUUIDToPath(domm.getEntity());
+        domm.setEntityPath(entityPath);
+        
+        // cache uuid-path
+        if(domm.getEntity() != null && !domm.getEntity().isEmpty() && 
+                domm.getEntityPath()!= null && !domm.getEntityPath().isEmpty()) {
+            this.cache.cache(domm.getEntity(), domm.getEntityPath());
+        }
+        
+        if(domm.getAuthor() == null) {
+            throw new IOException("message has no author field");
+        }
+        
+        domm.setOperation(routingKey);
+        String msgbody = this.serializer.toJson(domm);
+        
+        if(this.binder.getClientRegistrar() != null) {
+            Message msg = new Message();
+            
+            String author = extractClientUserIdFromAuthor(domm.getAuthor());
+            if(author != null) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+                msg.addRecipient(clients);
+            }
+            
+            String pathowner = extractClientUserIdFromPath(domm.getEntityPath());
+            if(pathowner != null && !pathowner.equals(author)) {
+                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+                msg.addRecipient(clients);
             }
 
             msg.setMessageBody(msgbody);

@@ -15,55 +15,20 @@
  */
 package org.iplantcollaborative.datastore.msg;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  *
  * @author iychoi
  */
-public class DataObjectAclMod {
+public class DataObjectAclMod extends ADataStoreMessage {
 
-    private User author;
-    private String entity;
-    private String path;
     private String permission;
-    private List<User> user = new ArrayList<User>();
+    private User user;
     
     public DataObjectAclMod() {
         
     }
-    
-    @JsonProperty("author")
-    public User getAuthor() {
-        return author;
-    }
-
-    @JsonProperty("author")
-    public void setAuthor(User author) {
-        this.author = author;
-    }
-
-    @JsonProperty("entity")
-    public String getEntity() {
-        return entity;
-    }
-
-    @JsonProperty("entity")
-    public void setEntity(String entity) {
-        this.entity = entity;
-    }
-
-    @JsonProperty("path")
-    public String getPath() {
-        return path;
-    }
-
-    @JsonProperty("path")
-    public void setPath(String path) {
-        this.path = path;
-    }   
     
     @JsonProperty("permission")
     public String getPermission() {
@@ -76,24 +41,12 @@ public class DataObjectAclMod {
     }
 
     @JsonProperty("user")
-    public List<User> getUser() {
+    public User getUser() {
         return user;
     }
 
     @JsonProperty("user")
-    public void addUser(List<User> user) {
-        this.user.addAll(user);
-    }
-    
-    @JsonProperty("user")
-    public void addUser(User user) {
-        this.user.add(user);
-    }
-    
-    @JsonProperty("user")
-    public void addUser(User[] user) {
-        for(User u : user) {
-            this.user.add(u);
-        }
+    public void setUser(User user) {
+        this.user = user;
     }
 }

@@ -21,10 +21,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author iychoi
  */
-public class DataObjectAdd {
+public class DataObjectAdd extends ADataStoreMessage {
 
-    private User author;
-    private String entity;
     private String path;
     private User creator;
     private long size;
@@ -32,26 +30,6 @@ public class DataObjectAdd {
     
     public DataObjectAdd() {
         
-    }
-    
-    @JsonProperty("author")
-    public User getAuthor() {
-        return author;
-    }
-
-    @JsonProperty("author")
-    public void setAuthor(User author) {
-        this.author = author;
-    }
-
-    @JsonProperty("entity")
-    public String getEntity() {
-        return entity;
-    }
-
-    @JsonProperty("entity")
-    public void setEntity(String entity) {
-        this.entity = entity;
     }
 
     @JsonProperty("path")

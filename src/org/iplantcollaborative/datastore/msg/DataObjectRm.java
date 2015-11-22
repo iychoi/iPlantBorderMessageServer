@@ -21,36 +21,14 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author iychoi
  */
-public class DataObjectRm {
+public class DataObjectRm extends ADataStoreMessage {
 
-    private User author;
-    private String entity;
     private String path;
     
     public DataObjectRm() {
         
     }
     
-    @JsonProperty("author")
-    public User getAuthor() {
-        return author;
-    }
-
-    @JsonProperty("author")
-    public void setAuthor(User author) {
-        this.author = author;
-    }
-
-    @JsonProperty("entity")
-    public String getEntity() {
-        return entity;
-    }
-
-    @JsonProperty("entity")
-    public void setEntity(String entity) {
-        this.entity = entity;
-    }
-
     @JsonProperty("path")
     public String getPath() {
         return path;
