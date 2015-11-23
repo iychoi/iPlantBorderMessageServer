@@ -130,6 +130,7 @@ public class DataStoreClient implements Closeable {
             
         };
         this.keepAliveThread = new Thread(keepAliveWorker);
+        this.keepAliveThread.start();
     }
 
     @Override
@@ -147,6 +148,7 @@ public class DataStoreClient implements Closeable {
 
     private synchronized void sendKeepAlive() {
         try {
+            LOG.info("sending keep-alive");
             IRODSFile instanceIRODSFile = this.accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile("/");
             if(instanceIRODSFile.exists()) {
                 // okey
