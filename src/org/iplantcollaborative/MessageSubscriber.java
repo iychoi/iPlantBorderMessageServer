@@ -111,7 +111,7 @@ public class MessageSubscriber implements Closeable {
                     channel.basicConsume(queueName, consumer);
                     LOG.info("Waiting for messages");
                 } catch (IOException ex) {
-                    LOG.error(ex);
+                    LOG.error("Exception occurred while consuming a message", ex);
                 }
             }
         });

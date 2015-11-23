@@ -130,15 +130,15 @@ public class MessageProcessor implements Closeable {
                     try {
                         publisher.publish(msg);
                     } catch (IOException ex) {
-                        LOG.error(ex);
+                        LOG.error("Exception occurred while publishing a message", ex);
                     }
                 } else {
                     LOG.error("processor not registered");
                 }
             }
         } catch (Exception ex) {
-            LOG.error(ex);
             LOG.info(message);
+            LOG.error("Exception occurred while processing a message", ex);
         }
     }
     

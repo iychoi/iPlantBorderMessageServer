@@ -99,7 +99,7 @@ public class DataStoreClient implements Closeable {
             this.accessObjectFactory = this.irodsFS.getIRODSAccessObjectFactory();
             this.irodsGenQueryExecutor = accessObjectFactory.getIRODSGenQueryExecutor(this.irodsAccount);
         } catch (AuthenticationException ex) {
-            LOG.error(ex);
+            LOG.error("Exception occurred while logging in", ex);
             throw new IOException(ex);
         } catch (JargonException ex) {
             throw new IOException(ex);
@@ -173,10 +173,10 @@ public class DataStoreClient implements Closeable {
         } catch (DataNotFoundException ex) {
             // fall
         } catch (JargonException ex) {
-            LOG.error(ex);
+            LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);
         } catch (JargonQueryException ex) {
-            LOG.error(ex);
+            LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);
         }
         
@@ -191,10 +191,10 @@ public class DataStoreClient implements Closeable {
         } catch (DataNotFoundException ex) {
             // fall
         } catch (JargonException ex) {
-            LOG.error(ex);
+            LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);
         } catch (JargonQueryException ex) {
-            LOG.error(ex);
+            LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);
         }
         

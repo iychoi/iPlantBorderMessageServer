@@ -59,7 +59,7 @@ public class IPlantBorderMessageServer implements Closeable {
             this.subscriber.connect();
             this.registrar.connect();
         } catch (TimeoutException ex) {
-            LOG.error(ex);
+            LOG.error("Exception occurred while connecting", ex);
         }
     }
     

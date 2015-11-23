@@ -137,7 +137,7 @@ public class ClientRegistrar implements Closeable {
                     channel.basicConsume(QUEUE_NAME, false, consumer);
                     LOG.info("Waiting for registrations");
                 } catch (IOException ex) {
-                    LOG.error(ex);
+                    LOG.error("Exception occurred while consuming message", ex);
                 }
             } 
         });
