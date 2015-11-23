@@ -17,6 +17,8 @@ package org.iplantcollaborative.irods;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.iplantcollaborative.conf.DataStoreConf;
@@ -28,6 +30,7 @@ import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.IRODSGenQueryExecutor;
+import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.query.IRODSGenQuery;
 import org.irods.jargon.core.query.IRODSQueryResultRow;
 import org.irods.jargon.core.query.IRODSQueryResultSet;
@@ -47,6 +50,7 @@ public class DataStoreClient implements Closeable {
     private IRODSAccount irodsAccount;
     private IRODSAccessObjectFactory accessObjectFactory;
     private IRODSGenQueryExecutor irodsGenQueryExecutor;
+    private Thread keepAliveThread;
 
     public DataStoreClient(DataStoreConf datastoreConf) {
         if (datastoreConf == null) {
@@ -82,7 +86,7 @@ public class DataStoreClient implements Closeable {
         }
     }
 
-    public void connect() throws IOException {
+    public synchronized void connect() throws IOException {
         try {
             this.irodsFS = IRODSFileSystem.instance();
         } catch (JargonException ex) {
@@ -108,18 +112,53 @@ public class DataStoreClient implements Closeable {
         if (!response.isSuccessful()) {
             throw new IOException("Cannot authenticate to IRODS");
         }
+        
+        Runnable keepAliveWorker = new Runnable() {
+
+            @Override
+            public void run() {
+                while(true) {
+                    sendKeepAlive();
+                    try {
+                        Thread.sleep(5*60*1000);
+                    } catch (InterruptedException ex) {
+                        LOG.error("keep alive worker got interrupted", ex);
+                        break;
+                    }
+                }
+            }
+            
+        };
+        this.keepAliveThread = new Thread(keepAliveWorker);
     }
 
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         try {
+            if(this.keepAliveThread != null) {
+                this.keepAliveThread.interrupt();
+                this.keepAliveThread = null;
+            }
             this.irodsFS.close();
         } catch (JargonException ex) {
             throw new IOException(ex);
         }
     }
 
-    private IRODSQueryResultSet queryDataObjectUUID(String entity) throws JargonException, JargonQueryException {
+    private synchronized void sendKeepAlive() {
+        try {
+            IRODSFile instanceIRODSFile = this.accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile("/");
+            if(instanceIRODSFile.exists()) {
+                // okey
+            } else {
+                LOG.error("disconnected?");
+            }
+        } catch (JargonException ex) {
+            LOG.error("failed to send keep alive", ex);
+        }
+    }
+    
+    private synchronized IRODSQueryResultSet queryDataObjectUUID(String entity) throws JargonException, JargonQueryException {
         StringBuilder q = new StringBuilder();
         q.append("select ");
         q.append(RodsGenQueryEnum.COL_COLL_NAME.getName()).append(", ");
@@ -138,7 +177,7 @@ public class DataStoreClient implements Closeable {
         return resultSet;
     }
     
-    private IRODSQueryResultSet queryCollectionUUID(String entity) throws JargonException, JargonQueryException {
+    private synchronized IRODSQueryResultSet queryCollectionUUID(String entity) throws JargonException, JargonQueryException {
         StringBuilder q = new StringBuilder();
         q.append("select ");
         q.append(RodsGenQueryEnum.COL_COLL_NAME.getName());
@@ -156,7 +195,7 @@ public class DataStoreClient implements Closeable {
         return resultSet;
     }
 
-    public String convertUUIDToPath(String entity) throws IOException {
+    public synchronized String convertUUIDToPath(String entity) throws IOException {
         // test dataobject
         try {
             IRODSQueryResultSet dataObjectResult = queryDataObjectUUID(entity);
