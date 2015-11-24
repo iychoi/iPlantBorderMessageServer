@@ -17,13 +17,9 @@ package org.iplantcollaborative;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ObjectNode;
 import org.iplantcollaborative.conf.DataStoreConf;
 import org.iplantcollaborative.datastore.msg.CollectionAclMod;
 import org.iplantcollaborative.datastore.msg.CollectionAdd;

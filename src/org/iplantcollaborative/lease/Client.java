@@ -60,7 +60,7 @@ public class Client {
     
     @JsonIgnore
     public String getRoutingKey() {
-        return userId + "_" + applicationName;
+        return userId + "/" + applicationName;
     }
     
     @JsonIgnore
@@ -85,6 +85,6 @@ public class Client {
     @JsonIgnore
     @Override
     public String toString() {
-        return this.userId + "_" + this.applicationName;
+        return this.userId + "/" + this.applicationName;
     }
 }

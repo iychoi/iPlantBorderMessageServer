@@ -17,8 +17,6 @@ package org.iplantcollaborative.irods;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.iplantcollaborative.conf.DataStoreConf;
