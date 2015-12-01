@@ -112,7 +112,7 @@ public class ClientRegistrar implements Closeable {
                     AMQP.BasicProperties properties, byte[] body) throws IOException {
                 String message = new String(body, "UTF-8");
                 
-                LOG.debug("registration - " + message);
+                LOG.info("registration - " + message);
                 
                 BasicProperties replyProps = new BasicProperties.Builder().correlationId(properties.getCorrelationId()).build();
                 
