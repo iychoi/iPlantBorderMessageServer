@@ -35,6 +35,7 @@ import org.iplantcollaborative.datastore.msg.DataObjectMv;
 import org.iplantcollaborative.datastore.msg.DataObjectRm;
 import org.iplantcollaborative.datastore.msg.User;
 import org.iplantcollaborative.irods.DataStoreClient;
+import org.iplantcollaborative.irods.DataStoreClientManager;
 import org.iplantcollaborative.lease.Client;
 import org.iplantcollaborative.utils.JsonSerializer;
 
@@ -48,7 +49,7 @@ public class MessageProcessor implements Closeable {
     
     private Binder binder;
     private JsonSerializer serializer;
-    private DataStoreClient datastoreClient;
+    private DataStoreClientManager datastoreClientManager;
     private UUIDCache cache;
     
     public MessageProcessor(DataStoreConf datastoreConf, Binder binder) {
@@ -67,11 +68,10 @@ public class MessageProcessor implements Closeable {
         this.serializer = new JsonSerializer();
         this.cache = new UUIDCache();
         
-        this.datastoreClient = new DataStoreClient(datastoreConf);
+        this.datastoreClientManager = new DataStoreClientManager(datastoreConf);
     }
     
     public void connect() throws IOException {
-        this.datastoreClient.connect();
     }
     
     public void process(String routingKey, String message) {
@@ -706,16 +706,24 @@ public class MessageProcessor implements Closeable {
     }
 
     private String convertUUIDToPath(String entity) throws IOException {
-        return this.datastoreClient.convertUUIDToPath(entity);
+        try {
+            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+            String path = datastoreClientInstance.convertUUIDToPath(entity);
+            return path;
+        } catch (IOException ex) {
+            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance(true);
+            String path = datastoreClientInstance.convertUUIDToPath(entity);
+            return path;
+        }
     }
     
-    public DataStoreClient getDatastoreClient() {
-        return datastoreClient;
+    public DataStoreClient getDatastoreClient() throws IOException {
+        return this.datastoreClientManager.getDatastoreClientInstance(true);
     }
 
     @Override
     public void close() throws IOException {
-        this.datastoreClient.close();
-        this.datastoreClient = null;
+        this.datastoreClientManager.close();
+        this.datastoreClientManager = null;
     }
 }
