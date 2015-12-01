@@ -16,6 +16,8 @@
 package org.iplantcollaborative.lease.msg;
 
 import java.io.IOException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.iplantcollaborative.utils.JsonSerializer;
@@ -25,6 +27,9 @@ import org.iplantcollaborative.utils.JsonSerializer;
  * @author iychoi
  */
 public class RequestFactory {
+    
+    private static final Log LOG = LogFactory.getLog(RequestFactory.class);
+    
     public static ARequest getRequestInstance(String jsonRequest) {
         try {
             ObjectMapper m = new ObjectMapper();
@@ -41,6 +46,7 @@ public class RequestFactory {
             }
             return null;
         } catch (IOException ex) {
+            LOG.info("unable to parse jsonRequest - " + jsonRequest);
             return null;
         }
     }
