@@ -37,17 +37,17 @@ public class RequestFactory {
             JsonNode rootNode = m.readTree(jsonRequest);
             
             // request
-            JsonNode reqNode = rootNode.get("req");
+            JsonNode reqNode = rootNode.get("request");
             if(reqNode != null) {
                 String reqtype = reqNode.asText();
                 if(reqtype != null) {
                     return createRequestInstance(reqtype, jsonRequest);
                 }
             }
-            LOG.info("unable to parse jsonRequest - " + jsonRequest);
+            LOG.error("unable to parse jsonRequest - " + jsonRequest);
             return null;
         } catch (IOException ex) {
-            LOG.info("unable to parse jsonRequest - " + jsonRequest);
+            LOG.error("unable to parse jsonRequest - " + jsonRequest, ex);
             return null;
         }
     }

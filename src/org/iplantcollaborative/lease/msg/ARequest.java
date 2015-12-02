@@ -23,7 +23,18 @@ import org.iplantcollaborative.lease.Client;
  * @author iychoi
  */
 public abstract class ARequest {
+    protected String requestType;
     protected Client client;
+    
+    @JsonProperty("request")
+    public String getRequestType() {
+        return requestType;
+    }
+    
+    @JsonProperty("request")
+    public void setRequestType(String requestType) {
+        this.requestType = requestType;
+    }
     
     @JsonProperty("client")
     public Client getClient() {
