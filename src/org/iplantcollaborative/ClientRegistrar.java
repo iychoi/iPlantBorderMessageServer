@@ -124,6 +124,8 @@ public class ClientRegistrar implements Closeable {
                     String response_json = serializer.toJson(res);
 
                     channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
+                } else {
+                    LOG.info("Unknown request : " + message);
                 }
                 
                 channel.basicAck(envelope.getDeliveryTag(), false);

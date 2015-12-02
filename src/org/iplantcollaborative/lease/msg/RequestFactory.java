@@ -44,6 +44,7 @@ public class RequestFactory {
                     return createRequestInstance(reqtype, jsonRequest);
                 }
             }
+            LOG.info("unable to parse jsonRequest - " + jsonRequest);
             return null;
         } catch (IOException ex) {
             LOG.info("unable to parse jsonRequest - " + jsonRequest);
