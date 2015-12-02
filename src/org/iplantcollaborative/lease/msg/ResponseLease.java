@@ -16,6 +16,7 @@
 package org.iplantcollaborative.lease.msg;
 
 import java.util.Date;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.iplantcollaborative.lease.Lease;
 
@@ -56,5 +57,10 @@ public class ResponseLease extends AResponse {
     @JsonProperty("lease_expire")
     public void setLeaseExpire(Date leaseExpire) {
         this.leaseExpire = leaseExpire;
+    }
+
+    @JsonIgnore
+    public String getRoutingKey() {
+        return "lease";
     }
 }

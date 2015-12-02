@@ -123,7 +123,11 @@ public class ClientRegistrar implements Closeable {
                     ResponseLease res = lease((RequestLease)request);
                     String response_json = serializer.toJson(res);
 
-                    channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
+                    if(properties.getReplyTo() != null) {
+                        channel.basicPublish("", properties.getReplyTo(), replyProps, response_json.getBytes());
+                    } else {
+                        LOG.error("unable to return response. reply_to field is null");
+                    }
                 } else {
                     LOG.error("Unknown request : " + message);
                 }
@@ -199,6 +203,9 @@ public class ClientRegistrar implements Closeable {
         List<Client> acceptedClients = new ArrayList<Client>();
         List<Client> toberemoved = new ArrayList<Client>();
         Set<Client> clients = this.clientMap.get(clientUserId);
+        
+        LOG.info("check clients for a message : " + msgbody);
+        
         if(clients != null) {
             for(Client client : clients) {
                 Lease lease = this.leases.get(client);

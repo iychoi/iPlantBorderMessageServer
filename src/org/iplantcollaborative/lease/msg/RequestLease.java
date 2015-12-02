@@ -18,6 +18,7 @@ package org.iplantcollaborative.lease.msg;
 import org.iplantcollaborative.lease.AcceptorConfig;
 import java.util.ArrayList;
 import java.util.List;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
@@ -33,6 +34,11 @@ public class RequestLease extends ARequest {
     }
     
     @JsonProperty("acceptors")
+    public void addAcceptor(List<AcceptorConfig> acceptorConfig) {
+        this.acceptors.addAll(acceptorConfig);
+    }
+    
+    @JsonIgnore
     public void addAcceptor(AcceptorConfig acceptorConfig) {
         this.acceptors.add(acceptorConfig);
     }

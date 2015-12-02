@@ -87,7 +87,7 @@ public class MessagePublisher implements Closeable {
         }
         
         for(Client c : msg.getRecipients()) {
-            LOG.debug("publish - " + c.getRoutingKey() + "\t" + msg.getMessageBody());
+            LOG.info("publish - " + c.getRoutingKey() + "\t" + msg.getMessageBody());
             this.channel.basicPublish(c.getExchange(), c.getRoutingKey(), null, msg.getMessageBody().getBytes());
         }
     }
