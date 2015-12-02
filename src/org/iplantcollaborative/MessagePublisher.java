@@ -71,6 +71,7 @@ public class MessagePublisher implements Closeable {
         
         this.connection = factory.newConnection();
         this.channel = this.connection.createChannel();
+        this.channel.basicQos(1);
         
         LOG.info("publisher connected - " + this.serverConf.getHostname() + ":" + this.serverConf.getPort());
     }

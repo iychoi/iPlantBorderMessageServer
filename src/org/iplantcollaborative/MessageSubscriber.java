@@ -81,6 +81,7 @@ public class MessageSubscriber implements Closeable {
         
         LOG.info("subscriber connected - " + this.serverConf.getHostname() + ":" + this.serverConf.getPort());
         
+        this.channel.basicQos(1);
         this.queueName = this.channel.queueDeclare().getQueue();
         this.channel.queueBind(this.queueName, EXCHANGE_NAME, "#");
         
