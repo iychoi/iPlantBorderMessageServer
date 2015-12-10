@@ -16,6 +16,7 @@
 package org.iplantcollaborative.irods;
 
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -247,28 +248,30 @@ public class DataStoreClient implements Closeable {
         return null;
     }
 
-    public synchronized boolean hasAccessPermissionsForDataObject(String path, String user) throws IOException {
+    public synchronized boolean hasAccessPermissionsForDataObject(String path, String user) throws IOException, FileNotFoundException {
         // test dataobject
         try {
             DataObjectAO dataObjectAO = this.accessObjectFactory.getDataObjectAO(this.irodsAccount);
             return dataObjectAO.isUserHasAccess(path, user);
+        } catch (org.irods.jargon.core.exception.FileNotFoundException ex) {
+            throw new FileNotFoundException("file " + path + " not found");
         } catch (DataNotFoundException ex) {
-            // fall
-            return false;
+            throw new FileNotFoundException("file " + path + " not found");
         } catch (JargonException ex) {
             LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);
         }
     }
     
-    public synchronized boolean hasAccessPermissionsForCollection(String path, String user) throws IOException {
+    public synchronized boolean hasAccessPermissionsForCollection(String path, String user) throws IOException, FileNotFoundException {
         // test dataobject
         try {
             CollectionAO collectionAO = this.accessObjectFactory.getCollectionAO(this.irodsAccount);
             return collectionAO.isUserHasAccess(path, user);
+        } catch (org.irods.jargon.core.exception.FileNotFoundException ex) {
+            throw new FileNotFoundException("file " + path + " not found");
         } catch (DataNotFoundException ex) {
-            // fall
-            return false;
+            throw new FileNotFoundException("file " + path + " not found");
         } catch (JargonException ex) {
             LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);

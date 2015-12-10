@@ -16,6 +16,7 @@
 package org.iplantcollaborative;
 
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -797,6 +798,35 @@ public class MessageProcessor implements Closeable {
                     } else {
                         userAcceptance.put(client.getUserId(), false);
                     }
+                } catch (FileNotFoundException ex) {
+                    String path2 = path;
+                    if(path2.endsWith("/")) {
+                        path2 = path2.substring(0, path.length()-1);
+                    }
+                    
+                    int lastIndexOf = path2.lastIndexOf("/");
+                    path2 = path2.substring(0, lastIndexOf);
+                    if(!path2.isEmpty()) {
+                        try {
+                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                            if(datastoreClientInstance.hasAccessPermissionsForCollection(path2, client.getUserId())) {
+                                userAcceptance.put(client.getUserId(), true);
+                                acceptedClients.add(client);
+                            } else {
+                                userAcceptance.put(client.getUserId(), false);
+                            }
+                        } catch (FileNotFoundException ex2) {
+                            userAcceptance.put(client.getUserId(), false);
+                        } catch (IOException ex2) {
+                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                            if(datastoreClientInstance.hasAccessPermissionsForCollection(path2, client.getUserId())) {
+                                userAcceptance.put(client.getUserId(), true);
+                                acceptedClients.add(client);
+                            } else {
+                                userAcceptance.put(client.getUserId(), false);
+                            }
+                        }
+                    }
                 } catch (IOException ex) {
                     DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
                     if(datastoreClientInstance.hasAccessPermissionsForDataObject(path, client.getUserId())) {
@@ -833,6 +863,35 @@ public class MessageProcessor implements Closeable {
                         acceptedClients.add(client);
                     } else {
                         userAcceptance.put(client.getUserId(), false);
+                    }
+                } catch (FileNotFoundException ex) {
+                    String path2 = path;
+                    if(path2.endsWith("/")) {
+                        path2 = path2.substring(0, path.length()-1);
+                    }
+                    
+                    int lastIndexOf = path2.lastIndexOf("/");
+                    path2 = path2.substring(0, lastIndexOf);
+                    if(!path2.isEmpty()) {
+                        try {
+                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                            if(datastoreClientInstance.hasAccessPermissionsForDataObject(path2, client.getUserId())) {
+                                userAcceptance.put(client.getUserId(), true);
+                                acceptedClients.add(client);
+                            } else {
+                                userAcceptance.put(client.getUserId(), false);
+                            }
+                        } catch (FileNotFoundException ex2) {
+                            userAcceptance.put(client.getUserId(), false);
+                        } catch (IOException ex2) {
+                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                            if(datastoreClientInstance.hasAccessPermissionsForDataObject(path2, client.getUserId())) {
+                                userAcceptance.put(client.getUserId(), true);
+                                acceptedClients.add(client);
+                            } else {
+                                userAcceptance.put(client.getUserId(), false);
+                            }
+                        }
                     }
                 } catch (IOException ex) {
                     DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
