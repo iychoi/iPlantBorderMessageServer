@@ -26,6 +26,7 @@ import com.rabbitmq.client.Envelope;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,7 +34,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.commons.collections4.MapIterator;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -223,23 +223,41 @@ public class ClientRegistrar implements Closeable {
         
         return acceptedClients;
     }
+    
+    public synchronized List<Client> getAcceptClients(String msgbody) {
+        List<Client> acceptedClients = new ArrayList<Client>();
+        List<Client> toberemoved = new ArrayList<Client>();
+        Collection<Set<Client>> clients = this.clientMap.values();
+        
+        LOG.info("check clients for a message : " + msgbody);
+        
+        if(clients != null) {
+            for(Set<Client> clients2 : clients) {
+                for(Client client : clients2) {
+                    Lease lease = this.leases.get(client);
+                    if(lease != null) {
+                        if(lease.accept(msgbody)) {
+                            acceptedClients.add(client);
+                        }
+                    } else {
+                        toberemoved.add(client);
+                    }
+                }
+            }
+            
+            for(Client rclient : toberemoved) {
+                Set<Client> rclients = this.clientMap.get(rclient.getUserId());
+                rclients.remove(rclient);
+            }
+        }
+        
+        return acceptedClients;
+    }
 
     public synchronized boolean accept(Client client, String msgbody) {
         Lease lease = this.leases.get(client);
         if(lease != null) {
             return lease.accept(msgbody);
-        }
-        return false;
-    }
-    
-    public synchronized boolean accept(String msgbody) {
-        MapIterator<Client, Lease> mapIterator = this.leases.mapIterator();
-        while(mapIterator.hasNext()) {
-            mapIterator.next();
-            Lease lease = mapIterator.getValue();
-            if(lease.accept(msgbody)) {
-                return true;
-            }
         }
         return false;
     }

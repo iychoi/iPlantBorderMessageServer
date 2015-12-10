@@ -17,7 +17,10 @@ package org.iplantcollaborative;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.iplantcollaborative.conf.DataStoreConf;
@@ -33,7 +36,6 @@ import org.iplantcollaborative.datastore.msg.DataObjectMetadataMod;
 import org.iplantcollaborative.datastore.msg.DataObjectMod;
 import org.iplantcollaborative.datastore.msg.DataObjectMv;
 import org.iplantcollaborative.datastore.msg.DataObjectRm;
-import org.iplantcollaborative.datastore.msg.User;
 import org.iplantcollaborative.irods.DataStoreClient;
 import org.iplantcollaborative.irods.DataStoreClientManager;
 import org.iplantcollaborative.lease.Client;
@@ -137,7 +139,7 @@ public class MessageProcessor implements Closeable {
             LOG.error("Exception occurred while processing a message", ex);
         }
     }
-    
+    /*
     private String extractUserNameFromPath(String path) {
         if(path == null || path.isEmpty()) {
             return null;
@@ -184,6 +186,7 @@ public class MessageProcessor implements Closeable {
         
         return userIds;
     }
+    */
     
     private Message process_collection_add(String routingKey, String message) throws IOException {
         CollectionAdd ca = (CollectionAdd) this.serializer.fromJson(message, CollectionAdd.class);
@@ -206,17 +209,20 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(ca.getAuthor());
             if (author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
+            List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
+            msg.addRecipient(clients);
             }
-
             String pathowner = extractClientUserIdFromPath(ca.getPath());
             if (pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
+            List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
+            msg.addRecipient(clients);
             }
+             */
+            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, ca.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -246,6 +252,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(cr.getAuthor());
             if (author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -257,6 +264,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cr.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -286,6 +296,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(cm.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -303,6 +314,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerNew, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cm.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -314,7 +328,7 @@ public class MessageProcessor implements Closeable {
     private Message process_collection_acl_mod(String routingKey, String message) throws IOException {
         CollectionAclMod cam = (CollectionAclMod) this.serializer.fromJson(message, CollectionAclMod.class);
         
-        String entityPath = convertUUIDToPath(cam.getEntity());
+        String entityPath = convertUUIDToPathForCollection(cam.getEntity());
         cam.setEntityPath(entityPath);
         
         // cache uuid-path
@@ -333,6 +347,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(cam.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -344,6 +359,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cam.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -359,7 +377,7 @@ public class MessageProcessor implements Closeable {
             throw new IOException("message has no author field");
         }
         
-        String entityPath = convertUUIDToPath(cma.getEntity());
+        String entityPath = convertUUIDToPathForCollection(cma.getEntity());
         cma.setEntityPath(entityPath);
         
         // cache uuid-path
@@ -374,6 +392,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(cma.getAuthor());
             if (author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -385,6 +404,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cma.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -414,6 +436,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(doa.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -431,6 +454,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, doa.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -460,6 +486,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(dor.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -471,6 +498,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, dor.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -482,7 +512,7 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_mod(String routingKey, String message) throws IOException {
         DataObjectMod dom = (DataObjectMod) this.serializer.fromJson(message, DataObjectMod.class);
         
-        String entityPath = convertUUIDToPath(dom.getEntity());
+        String entityPath = convertUUIDToPathForDataObject(dom.getEntity());
         dom.setEntityPath(entityPath);
         
         // cache uuid-path
@@ -501,6 +531,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
 
+            /*
             String author = extractClientUserIdFromAuthor(dom.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -518,6 +549,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, dom.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -547,6 +581,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(dom.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -564,6 +599,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerNew, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, dom.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -575,7 +613,7 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_acl_mod(String routingKey, String message) throws IOException {
         DataObjectAclMod doam = (DataObjectAclMod) this.serializer.fromJson(message, DataObjectAclMod.class);
         
-        String entityPath = convertUUIDToPath(doam.getEntity());
+        String entityPath = convertUUIDToPathForDataObject(doam.getEntity());
         doam.setEntityPath(entityPath);
         
         // cache uuid-path
@@ -594,6 +632,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
 
+            /*
             String author = extractClientUserIdFromAuthor(doam.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -615,6 +654,9 @@ public class MessageProcessor implements Closeable {
                     }
                 }
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, doam.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -626,7 +668,7 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_metadata_add(String routingKey, String message) throws IOException {
         DataObjectMetadataAdd doma = (DataObjectMetadataAdd) this.serializer.fromJson(message, DataObjectMetadataAdd.class);
         
-        String entityPath = convertUUIDToPath(doma.getEntity());
+        String entityPath = convertUUIDToPathForDataObject(doma.getEntity());
         doma.setEntityPath(entityPath);
         
         // cache uuid-path
@@ -645,6 +687,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(doma.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -656,6 +699,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, doma.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -667,7 +713,7 @@ public class MessageProcessor implements Closeable {
     private Message process_dataobject_metadata_mod(String routingKey, String message) throws IOException {
         DataObjectMetadataMod domm = (DataObjectMetadataMod) this.serializer.fromJson(message, DataObjectMetadataMod.class);
         
-        String entityPath = convertUUIDToPath(domm.getEntity());
+        String entityPath = convertUUIDToPathForDataObject(domm.getEntity());
         domm.setEntityPath(entityPath);
         
         // cache uuid-path
@@ -686,6 +732,7 @@ public class MessageProcessor implements Closeable {
         if(this.binder.getClientRegistrar() != null) {
             Message msg = new Message();
             
+            /*
             String author = extractClientUserIdFromAuthor(domm.getAuthor());
             if(author != null) {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
@@ -697,6 +744,9 @@ public class MessageProcessor implements Closeable {
                 List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
                 msg.addRecipient(clients);
             }
+            */
+            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, domm.getEntityPath());
+            msg.addRecipient(acceptedClients);
 
             msg.setMessageBody(msgbody);
             return msg;
@@ -705,16 +755,102 @@ public class MessageProcessor implements Closeable {
         }
     }
 
-    private String convertUUIDToPath(String entity) throws IOException {
+    private String convertUUIDToPathForDataObject(String entity) throws IOException {
         try {
             DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-            String path = datastoreClientInstance.convertUUIDToPath(entity);
+            String path = datastoreClientInstance.convertUUIDToPathForDataObject(entity);
             return path;
         } catch (IOException ex) {
             DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance(true);
-            String path = datastoreClientInstance.convertUUIDToPath(entity);
+            String path = datastoreClientInstance.convertUUIDToPathForDataObject(entity);
             return path;
         }
+    }
+    
+    private String convertUUIDToPathForCollection(String entity) throws IOException {
+        try {
+            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+            String path = datastoreClientInstance.convertUUIDToPathForCollection(entity);
+            return path;
+        } catch (IOException ex) {
+            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance(true);
+            String path = datastoreClientInstance.convertUUIDToPathForCollection(entity);
+            return path;
+        }
+    }
+    
+    private List<Client> listAcceptedClientsForDataObject(String msgbody, String path) throws IOException {
+        
+        List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(msgbody);
+        Map<String, Boolean> userAcceptance = new HashMap<String, Boolean>();
+        
+        List<Client> acceptedClients = new ArrayList<Client>();
+        
+        for(Client client : clients) {
+            Boolean baccept = userAcceptance.get(client.getUserId());
+            if(baccept == null) {
+                try {
+                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                    if(datastoreClientInstance.hasAccessPermissionsForDataObject(path, client.getUserId())) {
+                        userAcceptance.put(client.getUserId(), true);
+                        acceptedClients.add(client);
+                    } else {
+                        userAcceptance.put(client.getUserId(), false);
+                    }
+                } catch (IOException ex) {
+                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                    if(datastoreClientInstance.hasAccessPermissionsForDataObject(path, client.getUserId())) {
+                        userAcceptance.put(client.getUserId(), true);
+                        acceptedClients.add(client);
+                    } else {
+                        userAcceptance.put(client.getUserId(), false);
+                    }
+                }
+            } else {
+                if(baccept.booleanValue()) {
+                    acceptedClients.add(client);
+                }
+            }
+        }
+        
+        return acceptedClients;
+    }
+    
+    private List<Client> listAcceptedClientsForCollection(String msgbody, String path) throws IOException {
+        
+        List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(msgbody);
+        Map<String, Boolean> userAcceptance = new HashMap<String, Boolean>();
+        
+        List<Client> acceptedClients = new ArrayList<Client>();
+        
+        for(Client client : clients) {
+            Boolean baccept = userAcceptance.get(client.getUserId());
+            if(baccept == null) {
+                try {
+                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                    if(datastoreClientInstance.hasAccessPermissionsForCollection(path, client.getUserId())) {
+                        userAcceptance.put(client.getUserId(), true);
+                        acceptedClients.add(client);
+                    } else {
+                        userAcceptance.put(client.getUserId(), false);
+                    }
+                } catch (IOException ex) {
+                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+                    if(datastoreClientInstance.hasAccessPermissionsForCollection(path, client.getUserId())) {
+                        userAcceptance.put(client.getUserId(), true);
+                        acceptedClients.add(client);
+                    } else {
+                        userAcceptance.put(client.getUserId(), false);
+                    }
+                }
+            } else {
+                if(baccept.booleanValue()) {
+                    acceptedClients.add(client);
+                }
+            }
+        }
+        
+        return acceptedClients;
     }
     
     public DataStoreClient getDatastoreClient() throws IOException {

@@ -25,6 +25,8 @@ import org.irods.jargon.core.connection.auth.AuthResponse;
 import org.irods.jargon.core.exception.AuthenticationException;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.pub.CollectionAO;
+import org.irods.jargon.core.pub.DataObjectAO;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.IRODSGenQueryExecutor;
@@ -195,7 +197,7 @@ public class DataStoreClient implements Closeable {
         return resultSet;
     }
 
-    public synchronized String convertUUIDToPath(String entity) throws IOException {
+    public synchronized String convertUUIDToPathForDataObject(String entity) throws IOException {
         // test dataobject
         try {
             IRODSQueryResultSet dataObjectResult = queryDataObjectUUID(entity);
@@ -210,7 +212,7 @@ public class DataStoreClient implements Closeable {
                 }
             }
         } catch (DataNotFoundException ex) {
-            // fall
+            return null;
         } catch (JargonException ex) {
             LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);
@@ -219,6 +221,10 @@ public class DataStoreClient implements Closeable {
             throw new IOException(ex);
         }
         
+        return null;
+    }
+    
+    public synchronized String convertUUIDToPathForCollection(String entity) throws IOException {
         // test collection
         try {
             IRODSQueryResultSet collectionResult = queryCollectionUUID(entity);
@@ -229,6 +235,7 @@ public class DataStoreClient implements Closeable {
             }
         } catch (DataNotFoundException ex) {
             // fall
+            return null;
         } catch (JargonException ex) {
             LOG.error("Exception occurred while querying", ex);
             throw new IOException(ex);
@@ -238,5 +245,33 @@ public class DataStoreClient implements Closeable {
         }
         
         return null;
+    }
+
+    public synchronized boolean hasAccessPermissionsForDataObject(String path, String user) throws IOException {
+        // test dataobject
+        try {
+            DataObjectAO dataObjectAO = this.accessObjectFactory.getDataObjectAO(this.irodsAccount);
+            return dataObjectAO.isUserHasAccess(path, user);
+        } catch (DataNotFoundException ex) {
+            // fall
+            return false;
+        } catch (JargonException ex) {
+            LOG.error("Exception occurred while querying", ex);
+            throw new IOException(ex);
+        }
+    }
+    
+    public synchronized boolean hasAccessPermissionsForCollection(String path, String user) throws IOException {
+        // test dataobject
+        try {
+            CollectionAO collectionAO = this.accessObjectFactory.getCollectionAO(this.irodsAccount);
+            return collectionAO.isUserHasAccess(path, user);
+        } catch (DataNotFoundException ex) {
+            // fall
+            return false;
+        } catch (JargonException ex) {
+            LOG.error("Exception occurred while querying", ex);
+            throw new IOException(ex);
+        }
     }
 }
