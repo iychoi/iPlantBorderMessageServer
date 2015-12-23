@@ -24,7 +24,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.iplantcollaborative.AccessPermissionCache.AccessPermissionKey;
 import org.iplantcollaborative.conf.DataStoreConf;
+import org.iplantcollaborative.datastore.msg.ADataStoreMessage;
 import org.iplantcollaborative.datastore.msg.CollectionAclMod;
 import org.iplantcollaborative.datastore.msg.CollectionAdd;
 import org.iplantcollaborative.datastore.msg.CollectionMetadataAdd;
@@ -41,6 +43,7 @@ import org.iplantcollaborative.irods.DataStoreClient;
 import org.iplantcollaborative.irods.DataStoreClientManager;
 import org.iplantcollaborative.lease.Client;
 import org.iplantcollaborative.utils.JsonSerializer;
+import org.iplantcollaborative.utils.PathUtils;
 
 /**
  *
@@ -53,7 +56,8 @@ public class MessageProcessor implements Closeable {
     private Binder binder;
     private JsonSerializer serializer;
     private DataStoreClientManager datastoreClientManager;
-    private UUIDCache cache;
+    private UUIDCache uuidCache;
+    private AccessPermissionCache accessPermissionCache;
     
     public MessageProcessor(DataStoreConf datastoreConf, Binder binder) {
         if(datastoreConf == null) {
@@ -69,7 +73,8 @@ public class MessageProcessor implements Closeable {
         binder.setProcessor(this);
         
         this.serializer = new JsonSerializer();
-        this.cache = new UUIDCache();
+        this.uuidCache = new UUIDCache();
+        this.accessPermissionCache = new AccessPermissionCache();
         
         this.datastoreClientManager = new DataStoreClientManager(datastoreConf);
     }
@@ -78,685 +83,163 @@ public class MessageProcessor implements Closeable {
     }
     
     public void process(String routingKey, String message) {
-        Message msg = null;
         try {
-            switch(routingKey) {
-                case "collection.add":
-                    msg = process_collection_add(routingKey, message);
-                    break;
-                case "collection.rm":
-                    msg = process_collection_rm(routingKey, message);
-                    break;
-                case "collection.mv":
-                    msg = process_collection_mv(routingKey, message);
-                    break;
-                case "collection.acl.mod":
-                    msg = process_collection_acl_mod(routingKey, message);
-                    break;
-                case "collection.sys-metadata.add":
-                    msg = process_collection_metadata_add(routingKey, message);
-                    break;
-                case "data-object.add":
-                    msg = process_dataobject_add(routingKey, message);
-                    break;
-                case "data-object.rm":
-                    msg = process_dataobject_rm(routingKey, message);
-                    break;
-                case "data-object.mod":
-                    msg = process_dataobject_mod(routingKey, message);
-                    break;
-                case "data-object.mv":
-                    msg = process_dataobject_mv(routingKey, message);
-                    break;
-                case "data-object.acl.mod":
-                    msg = process_dataobject_acl_mod(routingKey, message);
-                    break;
-                case "data-object.sys-metadata.add":
-                    msg = process_dataobject_metadata_add(routingKey, message);
-                    break;
-                case "data-object.sys-metadata.mod":
-                    msg = process_dataobject_metadata_mod(routingKey, message);
-                    break;
-                default:
-                    LOG.info("message has no processor - ignored - " + routingKey);
-                    LOG.info(message);
-                    break;
-            }
-
-            if(msg != null) {
-                MessagePublisher publisher = this.binder.getPublisher();
-                if(publisher != null) {
-                    try {
-                        publisher.publish(msg);
-                    } catch (IOException ex) {
-                        LOG.error("Exception occurred while publishing a message", ex);
+            ADataStoreMessage dsMsg = createJsonMessageObject(routingKey, message);
+            if(dsMsg != null) {
+                if(this.binder.getClientRegistrar() != null) {
+                    List<Client> acceptedClients = listAcceptedClients(dsMsg);
+                    if(!acceptedClients.isEmpty()) {
+                        Message msg = new Message();
+                        String msgbody = this.serializer.toJson(dsMsg);
+                        
+                        msg.addRecipient(acceptedClients);
+                        msg.setMessageBody(msgbody);
+                        
+                        MessagePublisher publisher = this.binder.getPublisher();
+                        if(publisher != null) {
+                            try {
+                                publisher.publish(msg);
+                            } catch (IOException ex) {
+                                LOG.error("Exception occurred while publishing a message", ex);
+                            }
+                        } else {
+                            LOG.error("processor not registered");
+                        }
                     }
                 } else {
-                    LOG.error("processor not registered");
+                    LOG.error("client registrar not registered");
                 }
+            } else {
+                LOG.info("cannot process a message " + routingKey);
             }
         } catch (Exception ex) {
             LOG.info(message);
             LOG.error("Exception occurred while processing a message", ex);
         }
     }
-    /*
-    private String extractUserNameFromPath(String path) {
-        if(path == null || path.isEmpty()) {
-            return null;
+    
+    private ADataStoreMessage createJsonMessageObject(String routingKey, String message) throws IOException {
+        ADataStoreMessage dsMsg = null;
+        switch(routingKey) {
+            case "collection.add":
+            {
+                CollectionAdd msg = (CollectionAdd) this.serializer.fromJson(message, CollectionAdd.class);
+                msg.setEntityPath(msg.getPath());
+                dsMsg = msg;
+            }
+                break;
+            case "collection.rm":
+            {
+                CollectionRm msg = (CollectionRm) this.serializer.fromJson(message, CollectionRm.class);
+                msg.setEntityPath(msg.getPath());
+                dsMsg = msg;
+            }
+                break;
+            case "collection.mv":
+            {
+                CollectionMv msg = (CollectionMv) this.serializer.fromJson(message, CollectionMv.class);
+                msg.setEntityPath(msg.getNewPath());
+                dsMsg = msg;
+            }
+                break;
+            case "collection.acl.mod":
+            {
+                CollectionAclMod msg = (CollectionAclMod) this.serializer.fromJson(message, CollectionAclMod.class);
+                String entityPath = convertUUIDToPathForCollection(msg.getEntity());
+                msg.setEntityPath(entityPath);
+                dsMsg = msg;
+            }
+                break;
+            case "collection.sys-metadata.add":
+            {
+                CollectionMetadataAdd msg = (CollectionMetadataAdd) this.serializer.fromJson(message, CollectionMetadataAdd.class);
+                String entityPath = convertUUIDToPathForCollection(msg.getEntity());
+                msg.setEntityPath(entityPath);
+                dsMsg = msg;
+            }
+                break;
+            case "data-object.add":
+            {
+                DataObjectAdd msg = (DataObjectAdd) this.serializer.fromJson(message, DataObjectAdd.class);
+                msg.setEntityPath(msg.getPath());
+                dsMsg = msg;
+            }
+                break;
+            case "data-object.rm":
+            {
+                DataObjectRm msg = (DataObjectRm) this.serializer.fromJson(message, DataObjectRm.class);
+                msg.setEntityPath(msg.getPath());
+                dsMsg = msg;
+            }
+                break;
+            case "data-object.mod":
+            {
+                DataObjectMod msg = (DataObjectMod) this.serializer.fromJson(message, DataObjectMod.class);
+                String entityPath = convertUUIDToPathForDataObject(msg.getEntity());
+                msg.setEntityPath(entityPath);
+                dsMsg = msg;
+            }
+                break;
+            case "data-object.mv":
+            {
+                DataObjectMv msg = (DataObjectMv) this.serializer.fromJson(message, DataObjectMv.class);
+                msg.setEntityPath(msg.getNewPath());
+                dsMsg = msg;
+            }
+                break;
+            case "data-object.acl.mod":
+            {
+                DataObjectAclMod msg = (DataObjectAclMod) this.serializer.fromJson(message, DataObjectAclMod.class);
+                String entityPath = convertUUIDToPathForDataObject(msg.getEntity());
+                msg.setEntityPath(entityPath);
+                dsMsg = msg;
+            }
+                break;
+            case "data-object.sys-metadata.add":
+            {
+                DataObjectMetadataAdd msg = (DataObjectMetadataAdd) this.serializer.fromJson(message, DataObjectMetadataAdd.class);
+                String entityPath = convertUUIDToPathForDataObject(msg.getEntity());
+                msg.setEntityPath(entityPath);
+                dsMsg = msg;
+            }
+                break;
+            case "data-object.sys-metadata.mod":
+            {
+                DataObjectMetadataMod msg = (DataObjectMetadataMod) this.serializer.fromJson(message, DataObjectMetadataMod.class);
+                String entityPath = convertUUIDToPathForDataObject(msg.getEntity());
+                msg.setEntityPath(entityPath);
+                dsMsg = msg;
+            }
+                break;
+            default:
+            {
+                LOG.info("cannot find datastore data object matching to a message " + routingKey);
+                LOG.info(message);
+                dsMsg = null;
+            }
+                break;
         }
         
-        int idx = path.indexOf("/home/");
-        if(idx >= 0) {
-            String tail = path.substring(idx + 6);
-            int end = tail.indexOf("/");
-            if(end >= 0) {
-                tail = tail.substring(0, end);
+        if(dsMsg != null) {
+            // cache uuid-path if necessary
+            if(dsMsg.getEntity() != null && !dsMsg.getEntity().isEmpty() && 
+                    dsMsg.getEntityPath() != null && !dsMsg.getEntityPath().isEmpty()) {
+                this.uuidCache.cache(dsMsg.getEntity(), dsMsg.getEntityPath());
             }
-            return tail;
+            
+            // set operation
+            dsMsg.setOperation(routingKey);
         }
-        return null;
+        
+        return dsMsg;
     }
     
-    private String extractClientUserIdFromAuthor(User author) {
-        return author.getName();
-    }
-    
-    private String extractClientUserIdFromPath(String path) {
-        return extractUserNameFromPath(path);
-    }
-
-    private String[] extractClientUserIdsFromReaders(User reader) {
-        String[] userIds = new String[1];
-        
-        String userId = extractClientUserIdFromAuthor(reader);
-        userIds[0] = userId;
-        
-        return userIds;
-    }
-    
-    private String[] extractClientUserIdsFromReaders(List<User> readers) {
-        String[] userIds = new String[readers.size()];
-        
-        int i=0;
-        for(User reader : readers) {
-            String userId = extractClientUserIdFromAuthor(reader);
-            userIds[i] = userId;
-            i++;
-        }
-        
-        return userIds;
-    }
-    */
-    
-    private Message process_collection_add(String routingKey, String message) throws IOException {
-        CollectionAdd ca = (CollectionAdd) this.serializer.fromJson(message, CollectionAdd.class);
-        
-        ca.setEntityPath(ca.getPath());
-        
-        // cache uuid-path
-        if(ca.getEntity() != null && !ca.getEntity().isEmpty() && 
-                ca.getEntityPath() != null && !ca.getEntityPath().isEmpty()) {
-            this.cache.cache(ca.getEntity(), ca.getEntityPath());
-        }
-        
-        if(ca.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        ca.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(ca);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(ca.getAuthor());
-            if (author != null) {
-            List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-            msg.addRecipient(clients);
-            }
-            String pathowner = extractClientUserIdFromPath(ca.getPath());
-            if (pathowner != null && !pathowner.equals(author)) {
-            List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-            msg.addRecipient(clients);
-            }
-             */
-            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, ca.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_collection_rm(String routingKey, String message) throws IOException {
-        CollectionRm cr = (CollectionRm) this.serializer.fromJson(message, CollectionRm.class);
-        
-        cr.setEntityPath(cr.getPath());
-        
-        // cache uuid-path
-        if(cr.getEntity() != null && !cr.getEntity().isEmpty() && 
-                cr.getEntityPath() != null && !cr.getEntityPath().isEmpty()) {
-            this.cache.cache(cr.getEntity(), cr.getEntityPath());
-        }
-        
-        if(cr.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        cr.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(cr);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(cr.getAuthor());
-            if (author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathowner = extractClientUserIdFromPath(cr.getPath());
-            if (pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cr.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_collection_mv(String routingKey, String message) throws IOException {
-        CollectionMv cm = (CollectionMv) this.serializer.fromJson(message, CollectionMv.class);
-        
-        cm.setEntityPath(cm.getNewPath());
-        
-        // cache uuid-path
-        if(cm.getEntity() != null && !cm.getEntity().isEmpty() && 
-                cm.getEntityPath() != null && !cm.getEntityPath().isEmpty()) {
-            this.cache.cache(cm.getEntity(), cm.getEntityPath());
-        }
-        
-        if(cm.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        cm.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(cm);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(cm.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathownerOld = extractClientUserIdFromPath(cm.getOldPath());
-            if(pathownerOld != null && !pathownerOld.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerOld, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathownerNew = extractClientUserIdFromPath(cm.getNewPath());
-            if(pathownerNew != null && !pathownerNew.equals(author) && !pathownerNew.equals(pathownerOld)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerNew, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cm.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_collection_acl_mod(String routingKey, String message) throws IOException {
-        CollectionAclMod cam = (CollectionAclMod) this.serializer.fromJson(message, CollectionAclMod.class);
-        
-        String entityPath = convertUUIDToPathForCollection(cam.getEntity());
-        cam.setEntityPath(entityPath);
-        
-        // cache uuid-path
-        if(cam.getEntity() != null && !cam.getEntity().isEmpty() && 
-                cam.getEntityPath() != null && !cam.getEntityPath().isEmpty()) {
-            this.cache.cache(cam.getEntity(), cam.getEntityPath());
-        }
-        
-        if(cam.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        cam.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(cam);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(cam.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathowner = extractClientUserIdFromPath(cam.getEntityPath());
-            if(pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cam.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-    
-    private Message process_collection_metadata_add(String routingKey, String message) throws IOException {
-        CollectionMetadataAdd cma = (CollectionMetadataAdd) this.serializer.fromJson(message, CollectionMetadataAdd.class);
-        
-        if(cma.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        String entityPath = convertUUIDToPathForCollection(cma.getEntity());
-        cma.setEntityPath(entityPath);
-        
-        // cache uuid-path
-        if(cma.getEntity() != null && !cma.getEntity().isEmpty() && 
-                cma.getEntityPath() != null && !cma.getEntityPath().isEmpty()) {
-            this.cache.cache(cma.getEntity(), cma.getEntityPath());
-        }
-        
-        cma.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(cma);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(cma.getAuthor());
-            if (author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-            
-            String pathowner = extractClientUserIdFromPath(cma.getEntityPath());
-            if(pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForCollection(msgbody, cma.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_dataobject_add(String routingKey, String message) throws IOException {
-        DataObjectAdd doa = (DataObjectAdd) this.serializer.fromJson(message, DataObjectAdd.class);
-        
-        doa.setEntityPath(doa.getPath());
-        
-        // cache uuid-path
-        if(doa.getEntity() != null && !doa.getEntity().isEmpty() && 
-                doa.getEntityPath()!= null && !doa.getEntityPath().isEmpty()) {
-            this.cache.cache(doa.getEntity(), doa.getEntityPath());
-        }
-        
-        if(doa.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        doa.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(doa);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(doa.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String creator = extractClientUserIdFromAuthor(doa.getCreator());
-            if(creator != null && !creator.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(creator, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathowner = extractClientUserIdFromPath(doa.getPath());
-            if(pathowner != null && !pathowner.equals(author) && !pathowner.equals(creator)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, doa.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_dataobject_rm(String routingKey, String message) throws IOException {
-        DataObjectRm dor = (DataObjectRm) this.serializer.fromJson(message, DataObjectRm.class);
-        
-        dor.setEntityPath(dor.getPath());
-        
-        // cache uuid-path
-        if(dor.getEntity() != null && !dor.getEntity().isEmpty() && 
-                dor.getEntityPath()!= null && !dor.getEntityPath().isEmpty()) {
-            this.cache.cache(dor.getEntity(), dor.getEntityPath());
-        }
-        
-        if(dor.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        dor.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(dor);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(dor.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathowner = extractClientUserIdFromPath(dor.getPath());
-            if(pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, dor.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_dataobject_mod(String routingKey, String message) throws IOException {
-        DataObjectMod dom = (DataObjectMod) this.serializer.fromJson(message, DataObjectMod.class);
-        
-        String entityPath = convertUUIDToPathForDataObject(dom.getEntity());
-        dom.setEntityPath(entityPath);
-        
-        // cache uuid-path
-        if(dom.getEntity() != null && !dom.getEntity().isEmpty() && 
-                dom.getEntityPath()!= null && !dom.getEntityPath().isEmpty()) {
-            this.cache.cache(dom.getEntity(), dom.getEntityPath());
-        }
-        
-        if(dom.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        dom.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(dom);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-
-            /*
-            String author = extractClientUserIdFromAuthor(dom.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String creator = extractClientUserIdFromAuthor(dom.getCreator());
-            if(creator != null && !creator.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(creator, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathowner = extractClientUserIdFromPath(dom.getEntityPath());
-            if(pathowner != null && !pathowner.equals(author) && !pathowner.equals(creator)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, dom.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_dataobject_mv(String routingKey, String message) throws IOException {
-        DataObjectMv dom = (DataObjectMv) this.serializer.fromJson(message, DataObjectMv.class);
-        
-        dom.setEntityPath(dom.getNewPath());
-        
-        // cache uuid-path
-        if(dom.getEntity() != null && !dom.getEntity().isEmpty() && 
-                dom.getEntityPath()!= null && !dom.getEntityPath().isEmpty()) {
-            this.cache.cache(dom.getEntity(), dom.getEntityPath());
-        }
-        
-        if(dom.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        dom.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(dom);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(dom.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathownerOld = extractClientUserIdFromPath(dom.getOldPath());
-            if(pathownerOld != null && !pathownerOld.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerOld, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String pathownerNew = extractClientUserIdFromPath(dom.getNewPath());
-            if(pathownerNew != null && !pathownerNew.equals(author) && !pathownerNew.equals(pathownerOld)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathownerNew, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, dom.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
-    private Message process_dataobject_acl_mod(String routingKey, String message) throws IOException {
-        DataObjectAclMod doam = (DataObjectAclMod) this.serializer.fromJson(message, DataObjectAclMod.class);
-        
-        String entityPath = convertUUIDToPathForDataObject(doam.getEntity());
-        doam.setEntityPath(entityPath);
-        
-        // cache uuid-path
-        if(doam.getEntity() != null && !doam.getEntity().isEmpty() && 
-                doam.getEntityPath()!= null && !doam.getEntityPath().isEmpty()) {
-            this.cache.cache(doam.getEntity(), doam.getEntityPath());
-        }
-        
-        if(doam.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        doam.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(doam);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-
-            /*
-            String author = extractClientUserIdFromAuthor(doam.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-            
-            String pathowner = extractClientUserIdFromPath(doam.getEntityPath());
-            if(pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-
-            String[] users = extractClientUserIdsFromReaders(doam.getUser());
-            if(users != null) {
-                for(String user : users) {
-                    if(user != null && !user.equals(author) && !user.equals(pathowner)) {
-                        List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(user, msgbody);
-                        msg.addRecipient(clients);
-                    }
-                }
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, doam.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-    
-    private Message process_dataobject_metadata_add(String routingKey, String message) throws IOException {
-        DataObjectMetadataAdd doma = (DataObjectMetadataAdd) this.serializer.fromJson(message, DataObjectMetadataAdd.class);
-        
-        String entityPath = convertUUIDToPathForDataObject(doma.getEntity());
-        doma.setEntityPath(entityPath);
-        
-        // cache uuid-path
-        if(doma.getEntity() != null && !doma.getEntity().isEmpty() && 
-                doma.getEntityPath()!= null && !doma.getEntityPath().isEmpty()) {
-            this.cache.cache(doma.getEntity(), doma.getEntityPath());
-        }
-        
-        if(doma.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        doma.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(doma);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(doma.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-            
-            String pathowner = extractClientUserIdFromPath(doma.getEntityPath());
-            if(pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, doma.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-    
-    private Message process_dataobject_metadata_mod(String routingKey, String message) throws IOException {
-        DataObjectMetadataMod domm = (DataObjectMetadataMod) this.serializer.fromJson(message, DataObjectMetadataMod.class);
-        
-        String entityPath = convertUUIDToPathForDataObject(domm.getEntity());
-        domm.setEntityPath(entityPath);
-        
-        // cache uuid-path
-        if(domm.getEntity() != null && !domm.getEntity().isEmpty() && 
-                domm.getEntityPath()!= null && !domm.getEntityPath().isEmpty()) {
-            this.cache.cache(domm.getEntity(), domm.getEntityPath());
-        }
-        
-        if(domm.getAuthor() == null) {
-            throw new IOException("message has no author field");
-        }
-        
-        domm.setOperation(routingKey);
-        String msgbody = this.serializer.toJson(domm);
-        
-        if(this.binder.getClientRegistrar() != null) {
-            Message msg = new Message();
-            
-            /*
-            String author = extractClientUserIdFromAuthor(domm.getAuthor());
-            if(author != null) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(author, msgbody);
-                msg.addRecipient(clients);
-            }
-            
-            String pathowner = extractClientUserIdFromPath(domm.getEntityPath());
-            if(pathowner != null && !pathowner.equals(author)) {
-                List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(pathowner, msgbody);
-                msg.addRecipient(clients);
-            }
-            */
-            List<Client> acceptedClients = listAcceptedClientsForDataObject(msgbody, domm.getEntityPath());
-            msg.addRecipient(acceptedClients);
-
-            msg.setMessageBody(msgbody);
-            return msg;
-        } else {
-            return null;
-        }
-    }
-
     private String convertUUIDToPathForDataObject(String entity) throws IOException {
+        String cachedPath = this.uuidCache.get(entity);
+        if(cachedPath != null || !cachedPath.isEmpty()) {
+            return cachedPath;
+        }
+        
         try {
             DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
             String path = datastoreClientInstance.convertUUIDToPathForDataObject(entity);
@@ -769,6 +252,11 @@ public class MessageProcessor implements Closeable {
     }
     
     private String convertUUIDToPathForCollection(String entity) throws IOException {
+        String cachedPath = this.uuidCache.get(entity);
+        if(cachedPath != null || !cachedPath.isEmpty()) {
+            return cachedPath;
+        }
+        
         try {
             DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
             String path = datastoreClientInstance.convertUUIDToPathForCollection(entity);
@@ -780,127 +268,51 @@ public class MessageProcessor implements Closeable {
         }
     }
     
-    private List<Client> listAcceptedClientsForDataObject(String msgbody, String path) throws IOException {
-        
-        List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(msgbody);
-        Map<String, Boolean> userAcceptance = new HashMap<String, Boolean>();
-        
-        List<Client> acceptedClients = new ArrayList<Client>();
-        
-        for(Client client : clients) {
-            Boolean baccept = userAcceptance.get(client.getUserId());
-            if(baccept == null) {
-                try {
-                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                    if(datastoreClientInstance.hasAccessPermissionsForDataObject(path, client.getUserId())) {
-                        userAcceptance.put(client.getUserId(), true);
-                        acceptedClients.add(client);
-                    } else {
-                        userAcceptance.put(client.getUserId(), false);
-                    }
-                } catch (FileNotFoundException ex) {
-                    String path2 = path;
-                    if(path2.endsWith("/")) {
-                        path2 = path2.substring(0, path.length()-1);
-                    }
-                    
-                    int lastIndexOf = path2.lastIndexOf("/");
-                    path2 = path2.substring(0, lastIndexOf);
-                    if(!path2.isEmpty()) {
-                        try {
-                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                            if(datastoreClientInstance.hasAccessPermissionsForCollection(path2, client.getUserId())) {
-                                userAcceptance.put(client.getUserId(), true);
-                                acceptedClients.add(client);
-                            } else {
-                                userAcceptance.put(client.getUserId(), false);
-                            }
-                        } catch (FileNotFoundException ex2) {
-                            userAcceptance.put(client.getUserId(), false);
-                        } catch (IOException ex2) {
-                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                            if(datastoreClientInstance.hasAccessPermissionsForCollection(path2, client.getUserId())) {
-                                userAcceptance.put(client.getUserId(), true);
-                                acceptedClients.add(client);
-                            } else {
-                                userAcceptance.put(client.getUserId(), false);
-                            }
-                        }
-                    }
-                } catch (IOException ex) {
-                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                    if(datastoreClientInstance.hasAccessPermissionsForDataObject(path, client.getUserId())) {
-                        userAcceptance.put(client.getUserId(), true);
-                        acceptedClients.add(client);
-                    } else {
-                        userAcceptance.put(client.getUserId(), false);
-                    }
-                }
-            } else {
-                if(baccept.booleanValue()) {
-                    acceptedClients.add(client);
-                }
+    private boolean _checkAccessPermissionForCollection(DataStoreClient datastoreClientInstance, String path, String userId) throws IOException {
+        try {
+            AccessPermissionKey accessPermissionKey = new AccessPermissionKey(userId, path);
+            Boolean cachedAccessPermission = this.accessPermissionCache.get(accessPermissionKey);
+            if(cachedAccessPermission != null) {
+                return cachedAccessPermission.booleanValue();
             }
+            
+            boolean bAccessPermission = datastoreClientInstance.hasAccessPermissionsForCollection(path, userId);
+            this.accessPermissionCache.cache(accessPermissionKey, bAccessPermission);
+            
+            return bAccessPermission;
+        } catch (FileNotFoundException ex) {
+            String parentPath = PathUtils.getParentPath(path);
+            if(parentPath != null) {
+                return _checkAccessPermissionForCollection(datastoreClientInstance, parentPath, userId);
+            }
+            return false;
         }
-        
-        return acceptedClients;
     }
     
-    private List<Client> listAcceptedClientsForCollection(String msgbody, String path) throws IOException {
-        
-        List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(msgbody);
+    private boolean checkAccessPermissionForCollection(String path, String userId) throws IOException {
+        try {
+            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
+            return _checkAccessPermissionForCollection(datastoreClientInstance, path, userId);
+        } catch (IOException ex) {
+            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance(true);
+            return _checkAccessPermissionForCollection(datastoreClientInstance, path, userId);
+        }
+    }
+    
+    private List<Client> listAcceptedClients(ADataStoreMessage msg) throws IOException {
+        List<Client> clients = this.binder.getClientRegistrar().getAcceptClients(msg);
         Map<String, Boolean> userAcceptance = new HashMap<String, Boolean>();
-        
         List<Client> acceptedClients = new ArrayList<Client>();
+        String path = PathUtils.getParentPath(msg.getEntityPath());
         
         for(Client client : clients) {
             Boolean baccept = userAcceptance.get(client.getUserId());
             if(baccept == null) {
-                try {
-                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                    if(datastoreClientInstance.hasAccessPermissionsForCollection(path, client.getUserId())) {
-                        userAcceptance.put(client.getUserId(), true);
-                        acceptedClients.add(client);
-                    } else {
-                        userAcceptance.put(client.getUserId(), false);
-                    }
-                } catch (FileNotFoundException ex) {
-                    String path2 = path;
-                    if(path2.endsWith("/")) {
-                        path2 = path2.substring(0, path.length()-1);
-                    }
-                    
-                    int lastIndexOf = path2.lastIndexOf("/");
-                    path2 = path2.substring(0, lastIndexOf);
-                    if(!path2.isEmpty()) {
-                        try {
-                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                            if(datastoreClientInstance.hasAccessPermissionsForDataObject(path2, client.getUserId())) {
-                                userAcceptance.put(client.getUserId(), true);
-                                acceptedClients.add(client);
-                            } else {
-                                userAcceptance.put(client.getUserId(), false);
-                            }
-                        } catch (FileNotFoundException ex2) {
-                            userAcceptance.put(client.getUserId(), false);
-                        } catch (IOException ex2) {
-                            DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                            if(datastoreClientInstance.hasAccessPermissionsForDataObject(path2, client.getUserId())) {
-                                userAcceptance.put(client.getUserId(), true);
-                                acceptedClients.add(client);
-                            } else {
-                                userAcceptance.put(client.getUserId(), false);
-                            }
-                        }
-                    }
-                } catch (IOException ex) {
-                    DataStoreClient datastoreClientInstance = this.datastoreClientManager.getDatastoreClientInstance();
-                    if(datastoreClientInstance.hasAccessPermissionsForCollection(path, client.getUserId())) {
-                        userAcceptance.put(client.getUserId(), true);
-                        acceptedClients.add(client);
-                    } else {
-                        userAcceptance.put(client.getUserId(), false);
-                    }
+                if(checkAccessPermissionForCollection(path, client.getUserId())) {
+                    userAcceptance.put(client.getUserId(), true);
+                    acceptedClients.add(client);
+                } else {
+                    userAcceptance.put(client.getUserId(), false);
                 }
             } else {
                 if(baccept.booleanValue()) {
@@ -908,7 +320,6 @@ public class MessageProcessor implements Closeable {
                 }
             }
         }
-        
         return acceptedClients;
     }
     
@@ -920,5 +331,8 @@ public class MessageProcessor implements Closeable {
     public void close() throws IOException {
         this.datastoreClientManager.close();
         this.datastoreClientManager = null;
+        
+        this.uuidCache.clearCache();
+        this.accessPermissionCache.clearCache();
     }
 }

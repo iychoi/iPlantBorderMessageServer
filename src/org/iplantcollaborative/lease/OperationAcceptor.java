@@ -15,9 +15,7 @@
  */
 package org.iplantcollaborative.lease;
 
-import java.io.IOException;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
+import org.iplantcollaborative.datastore.msg.ADataStoreMessage;
 
 /**
  *
@@ -43,29 +41,18 @@ public class OperationAcceptor implements IMessageAcceptor {
         }
         return true;
     }
-
     
     @Override
-    public boolean accept(String message) {
+    public boolean accept(ADataStoreMessage message) {
         if(this.pattern.equals("*")) {
             return true;
         }
         
-        try {
-            ObjectMapper m = new ObjectMapper();
-            
-            JsonNode rootNode = m.readTree(message);
-            JsonNode operationNode = rootNode.get("operation");
-            if(operationNode != null) {
-                String operation = operationNode.asText();
-                if(operation != null) {
-                    return wildCardMatch(operation);
-                }
-            }
-            return false;
-        } catch (IOException ex) {
-            return false;
+        String operation = message.getOperation();
+        if(operation != null) {
+            return wildCardMatch(operation);
         }
+        return false;
     }
 
     @Override

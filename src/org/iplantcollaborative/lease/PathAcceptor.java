@@ -15,9 +15,19 @@
  */
 package org.iplantcollaborative.lease;
 
-import java.io.IOException;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
+import org.iplantcollaborative.datastore.msg.ADataStoreMessage;
+import org.iplantcollaborative.datastore.msg.CollectionAclMod;
+import org.iplantcollaborative.datastore.msg.CollectionAdd;
+import org.iplantcollaborative.datastore.msg.CollectionMetadataAdd;
+import org.iplantcollaborative.datastore.msg.CollectionMv;
+import org.iplantcollaborative.datastore.msg.CollectionRm;
+import org.iplantcollaborative.datastore.msg.DataObjectAclMod;
+import org.iplantcollaborative.datastore.msg.DataObjectAdd;
+import org.iplantcollaborative.datastore.msg.DataObjectMetadataAdd;
+import org.iplantcollaborative.datastore.msg.DataObjectMetadataMod;
+import org.iplantcollaborative.datastore.msg.DataObjectMod;
+import org.iplantcollaborative.datastore.msg.DataObjectMv;
+import org.iplantcollaborative.datastore.msg.DataObjectRm;
 
 /**
  *
@@ -44,50 +54,224 @@ public class PathAcceptor implements IMessageAcceptor {
         return true;
     }
 
-    
     @Override
-    public boolean accept(String message) {
+    public boolean accept(ADataStoreMessage message) {
         if(this.pattern.equals("*")) {
             return true;
         }
         
-        try {
-            ObjectMapper m = new ObjectMapper();
-            
-            JsonNode rootNode = m.readTree(message);
-            
-            // path
-            JsonNode pathNode = rootNode.get("path");
-            if(pathNode != null) {
-                String path = pathNode.asText();
-                if(path != null) {
-                    return wildCardMatch(path);
-                }
-            }
-            
-            // new-path, old-path
-            JsonNode newpathNode = rootNode.get("new-path");
-            if(newpathNode != null) {
-                String path = newpathNode.asText();
-                if(path != null) {
-                    return wildCardMatch(path);
-                }
-            }
-            
-            JsonNode oldpathNode = rootNode.get("old-path");
-            if(oldpathNode != null) {
-                String path = oldpathNode.asText();
-                if(path != null) {
-                    return wildCardMatch(path);
-                }
-            }
-            
-            return false;
-        } catch (IOException ex) {
-            return false;
+        if(message instanceof CollectionAclMod) {
+            return accept((CollectionAclMod)message);
+        } else if(message instanceof CollectionAdd) {
+            return accept((CollectionAdd)message);
+        } else if(message instanceof CollectionMetadataAdd) {
+            return accept((CollectionMetadataAdd)message);
+        } else if(message instanceof CollectionMv) {
+            return accept((CollectionMv)message);
+        } else if(message instanceof CollectionRm) {
+            return accept((CollectionRm)message);
+        } else if(message instanceof DataObjectAclMod) {
+            return accept((DataObjectAclMod)message);
+        } else if(message instanceof DataObjectAdd) {
+            return accept((DataObjectAdd)message);
+        } else if(message instanceof DataObjectMetadataAdd) {
+            return accept((DataObjectMetadataAdd)message);
+        } else if(message instanceof DataObjectMetadataMod) {
+            return accept((DataObjectMetadataMod)message);
+        } else if(message instanceof DataObjectMod) {
+            return accept((DataObjectMod)message);
+        } else if(message instanceof DataObjectMv) {
+            return accept((DataObjectMv)message);
+        } else if(message instanceof DataObjectRm) {
+            return accept((DataObjectRm)message);
         }
+        return false;
     }
-
+    
+    public boolean accept(CollectionAclMod message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(CollectionAdd message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        
+        String path = message.getPath();
+        if(path != null) {
+            return wildCardMatch(path);
+        }
+        return false;
+    }
+    
+    public boolean accept(CollectionMetadataAdd message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(CollectionMv message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        
+        String oldPath = message.getOldPath();
+        if(oldPath != null) {
+            return wildCardMatch(oldPath);
+        }
+        
+        String newPath = message.getNewPath();
+        if(newPath != null) {
+            return wildCardMatch(newPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(CollectionRm message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        
+        String path = message.getPath();
+        if(path != null) {
+            return wildCardMatch(path);
+        }
+        return false;
+    }
+    
+    public boolean accept(DataObjectAclMod message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(DataObjectAdd message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        
+        String path = message.getPath();
+        if(path != null) {
+            return wildCardMatch(path);
+        }
+        return false;
+    }
+    
+    public boolean accept(DataObjectMetadataAdd message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(DataObjectMetadataMod message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(DataObjectMod message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(DataObjectMv message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        
+        String oldPath = message.getOldPath();
+        if(oldPath != null) {
+            return wildCardMatch(oldPath);
+        }
+        
+        String newPath = message.getNewPath();
+        if(newPath != null) {
+            return wildCardMatch(newPath);
+        }
+        return false;
+    }
+    
+    public boolean accept(DataObjectRm message) {
+        if(this.pattern.equals("*")) {
+            return true;
+        }
+        
+        String entityPath = message.getEntityPath();
+        if(entityPath != null) {
+            return wildCardMatch(entityPath);
+        }
+        
+        String path = message.getPath();
+        if(path != null) {
+            return wildCardMatch(path);
+        }
+        return false;
+    }
+    
     @Override
     public void setPattern(String pattern) {
         this.pattern = pattern;

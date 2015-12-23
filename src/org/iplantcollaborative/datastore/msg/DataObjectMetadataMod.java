@@ -15,8 +15,6 @@
  */
 package org.iplantcollaborative.datastore.msg;
 
-import org.codehaus.jackson.annotate.JsonProperty;
-
 /**
  *
  * @author iychoi

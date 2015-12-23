@@ -18,6 +18,7 @@ package org.iplantcollaborative.lease;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import org.iplantcollaborative.datastore.msg.ADataStoreMessage;
 import org.iplantcollaborative.lease.msg.RequestLease;
 
 /**
@@ -68,7 +69,7 @@ public class Lease {
         }
     }
     
-    public boolean accept(String message) {
+    public boolean accept(ADataStoreMessage message) {
         if(this.acceptors.size() == 0) {
             return false;
         }

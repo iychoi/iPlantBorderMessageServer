@@ -15,27 +15,82 @@
  */
 package org.iplantcollaborative;
 
+import java.util.Objects;
 import org.apache.commons.collections4.map.LRUMap;
 
 /**
  *
  * @author iychoi
  */
-public class UUIDCache {
+public class AccessPermissionCache {
     
-    private static final int DEFAULT_CACHE_SIZE = 10000;
+    private static final int DEFAULT_CACHE_SIZE = 100000;
     
-    private LRUMap<String, String> cache = new LRUMap<String, String>(DEFAULT_CACHE_SIZE);
+    private LRUMap<AccessPermissionKey, Boolean> cache = new LRUMap<AccessPermissionKey, Boolean>(DEFAULT_CACHE_SIZE);
     
-    public UUIDCache() {
+    public static class AccessPermissionKey {
+        private String userId;
+        private String path;
+
+        public AccessPermissionKey(String userId, String path) {
+            this.userId = userId;
+            this.path = path;
+        }
+        
+        public String getUserId() {
+            return userId;
+        }
+
+        public void setUserId(String userId) {
+            this.userId = userId;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public void setPath(String path) {
+            this.path = path;
+        }
+        
+        @Override
+        public int hashCode() {
+            return this.userId.hashCode() ^ this.path.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final AccessPermissionKey other = (AccessPermissionKey) obj;
+            if (!Objects.equals(this.userId, other.userId)) {
+                return false;
+            }
+            if (!Objects.equals(this.path, other.path)) {
+                return false;
+            }
+            return true;
+        }
+        
+        @Override
+        public String toString() {
+            return this.userId + "@" + this.path;
+        }
     }
     
-    public void cache(String uuid, String path) {
-        this.cache.put(uuid, path);
+    public AccessPermissionCache() {
     }
     
-    public String get(String uuid) {
-        return this.cache.get(uuid);
+    public void cache(AccessPermissionKey key, Boolean allowed) {
+        this.cache.put(key, allowed);
+    }
+    
+    public Boolean get(AccessPermissionKey key) {
+        return this.cache.get(key);
     }
     
     public void clearCache() {

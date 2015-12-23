@@ -15,11 +15,13 @@
  */
 package org.iplantcollaborative.lease;
 
+import org.iplantcollaborative.datastore.msg.ADataStoreMessage;
+
 /**
  *
  * @author iychoi
  */
 public interface IMessageAcceptor {
     public void setPattern(String pattern);
-    public boolean accept(String message);
+    public boolean accept(ADataStoreMessage message);
 }

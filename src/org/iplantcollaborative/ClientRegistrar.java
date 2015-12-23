@@ -38,6 +38,7 @@ import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.iplantcollaborative.conf.MessageServerConf;
+import org.iplantcollaborative.datastore.msg.ADataStoreMessage;
 import org.iplantcollaborative.lease.Client;
 import org.iplantcollaborative.lease.Lease;
 import org.iplantcollaborative.lease.msg.ARequest;
@@ -199,18 +200,16 @@ public class ClientRegistrar implements Closeable {
         return response;
     }
     
-    public synchronized List<Client> getAcceptClients(String clientUserId, String msgbody) {
+    public synchronized List<Client> getAcceptClients(String clientUserId, ADataStoreMessage message) {
         List<Client> acceptedClients = new ArrayList<Client>();
         List<Client> toberemoved = new ArrayList<Client>();
         Set<Client> clients = this.clientMap.get(clientUserId);
-        
-        LOG.info("check clients for a message : " + msgbody);
         
         if(clients != null) {
             for(Client client : clients) {
                 Lease lease = this.leases.get(client);
                 if(lease != null) {
-                    if(lease.accept(msgbody)) {
+                    if(lease.accept(message)) {
                         acceptedClients.add(client);
                     }
                 } else {
@@ -224,19 +223,17 @@ public class ClientRegistrar implements Closeable {
         return acceptedClients;
     }
     
-    public synchronized List<Client> getAcceptClients(String msgbody) {
+    public synchronized List<Client> getAcceptClients(ADataStoreMessage message) {
         List<Client> acceptedClients = new ArrayList<Client>();
         List<Client> toberemoved = new ArrayList<Client>();
         Collection<Set<Client>> clients = this.clientMap.values();
-        
-        LOG.info("check clients for a message : " + msgbody);
         
         if(clients != null) {
             for(Set<Client> clients2 : clients) {
                 for(Client client : clients2) {
                     Lease lease = this.leases.get(client);
                     if(lease != null) {
-                        if(lease.accept(msgbody)) {
+                        if(lease.accept(message)) {
                             acceptedClients.add(client);
                         }
                     } else {
@@ -254,10 +251,10 @@ public class ClientRegistrar implements Closeable {
         return acceptedClients;
     }
 
-    public synchronized boolean accept(Client client, String msgbody) {
+    public synchronized boolean accept(Client client, ADataStoreMessage message) {
         Lease lease = this.leases.get(client);
         if(lease != null) {
-            return lease.accept(msgbody);
+            return lease.accept(message);
         }
         return false;
     }
