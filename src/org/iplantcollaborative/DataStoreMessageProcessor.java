@@ -49,9 +49,9 @@ import org.iplantcollaborative.utils.PathUtils;
  *
  * @author iychoi
  */
-public class MessageProcessor implements Closeable {
+public class DataStoreMessageProcessor implements Closeable {
     
-    private static final Log LOG = LogFactory.getLog(MessageProcessor.class);
+    private static final Log LOG = LogFactory.getLog(DataStoreMessageProcessor.class);
     
     private Binder binder;
     private JsonSerializer serializer;
@@ -59,7 +59,7 @@ public class MessageProcessor implements Closeable {
     private UUIDCache uuidCache;
     private AccessPermissionCache accessPermissionCache;
     
-    public MessageProcessor(DataStoreConf datastoreConf, Binder binder) {
+    public DataStoreMessageProcessor(DataStoreConf datastoreConf, Binder binder) {
         if(datastoreConf == null) {
             throw new IllegalArgumentException("datastoreConf is null");
         }

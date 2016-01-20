@@ -33,9 +33,9 @@ import org.iplantcollaborative.conf.MessageServerConf;
  *
  * @author iychoi
  */
-public class MessageSubscriber implements Closeable {
+public class DataStoreMessageReceiver implements Closeable {
     
-    private static final Log LOG = LogFactory.getLog(MessageSubscriber.class);
+    private static final Log LOG = LogFactory.getLog(DataStoreMessageReceiver.class);
     
     private static final String EXCHANGE_NAME = "irods";
     
@@ -47,7 +47,7 @@ public class MessageSubscriber implements Closeable {
     private Consumer consumer;
     private Thread workerThread;
     
-    public MessageSubscriber(MessageServerConf serverConf, Binder binder) {
+    public DataStoreMessageReceiver(MessageServerConf serverConf, Binder binder) {
         if(serverConf == null) {
             throw new IllegalArgumentException("serverConf is null");
         }
@@ -63,7 +63,7 @@ public class MessageSubscriber implements Closeable {
         this.serverConf = serverConf;
         this.binder = binder;
         
-        binder.setSubscriber(this);
+        binder.setReceiver(this);
     }
     
     public void connect() throws IOException, TimeoutException {
@@ -93,7 +93,7 @@ public class MessageSubscriber implements Closeable {
                 
                 LOG.debug("subscribe - " + envelope.getRoutingKey() + ":" + message);
                 
-                MessageProcessor processor = binder.getProcessor();
+                DataStoreMessageProcessor processor = binder.getProcessor();
                 if(processor != null) {
                     processor.process(envelope.getRoutingKey(), message);
                 } else {

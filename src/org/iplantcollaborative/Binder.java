@@ -22,8 +22,8 @@ package org.iplantcollaborative;
 public class Binder {
 
     private MessagePublisher publisher;
-    private MessageSubscriber subscriber;
-    private MessageProcessor processor;
+    private DataStoreMessageReceiver receiver;
+    private DataStoreMessageProcessor processor;
     private ClientRegistrar clientRegistrar;
     
     public Binder() {
@@ -38,19 +38,19 @@ public class Binder {
         this.publisher = publisher;
     }
 
-    public MessageSubscriber getSubscriber() {
-        return subscriber;
+    public DataStoreMessageReceiver getReceiver() {
+        return receiver;
     }
 
-    public void setSubscriber(MessageSubscriber subscriber) {
-        this.subscriber = subscriber;
+    public void setReceiver(DataStoreMessageReceiver receiver) {
+        this.receiver = receiver;
     }
 
-    public MessageProcessor getProcessor() {
+    public DataStoreMessageProcessor getProcessor() {
         return processor;
     }
     
-    public void setProcessor(MessageProcessor processor) {
+    public void setProcessor(DataStoreMessageProcessor processor) {
         this.processor = processor;
     }
 

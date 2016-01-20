@@ -36,9 +36,9 @@ public class IPlantBorderMessageServer implements Closeable {
     private MessageServerConf msgsvrConf;
     private DataStoreConf datastoreConf;
     private Binder binder;
-    private MessageProcessor processor;
+    private DataStoreMessageProcessor processor;
     private MessagePublisher publisher;
-    private MessageSubscriber subscriber;
+    private DataStoreMessageReceiver subscriber;
     private ClientRegistrar registrar;
     
     public IPlantBorderMessageServer(MessageServerConf msgsvrConf, DataStoreConf datastoreConf) {
@@ -46,9 +46,9 @@ public class IPlantBorderMessageServer implements Closeable {
         this.datastoreConf = datastoreConf;
         
         this.binder = new Binder();
-        this.processor = new MessageProcessor(this.datastoreConf, this.binder);
+        this.processor = new DataStoreMessageProcessor(this.datastoreConf, this.binder);
         this.publisher = new MessagePublisher(this.msgsvrConf, this.binder);
-        this.subscriber = new MessageSubscriber(this.msgsvrConf, this.binder);
+        this.subscriber = new DataStoreMessageReceiver(this.msgsvrConf, this.binder);
         this.registrar = new ClientRegistrar(this.msgsvrConf, this.binder);
     }
     
@@ -79,7 +79,7 @@ public class IPlantBorderMessageServer implements Closeable {
         return datastoreConf;
     }
 
-    public MessageProcessor getProcessor() {
+    public DataStoreMessageProcessor getProcessor() {
         return processor;
     }
 
@@ -87,7 +87,7 @@ public class IPlantBorderMessageServer implements Closeable {
         return publisher;
     }
 
-    public MessageSubscriber getSubscriber() {
+    public DataStoreMessageReceiver getSubscriber() {
         return subscriber;
     }
 
