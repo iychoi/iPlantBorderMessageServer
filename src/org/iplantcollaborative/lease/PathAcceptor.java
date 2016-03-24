@@ -89,187 +89,215 @@ public class PathAcceptor implements IMessageAcceptor {
     }
     
     public boolean accept(CollectionAclMod message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(CollectionAdd message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
         
-        String path = message.getPath();
-        if(path != null) {
-            return wildCardMatch(path);
+        if(!accept) {
+            String path = message.getPath();
+            if(path != null) {
+                accept = accept || wildCardMatch(path);
+            }
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(CollectionMetadataAdd message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(CollectionMv message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
         
-        String oldPath = message.getOldPath();
-        if(oldPath != null) {
-            return wildCardMatch(oldPath);
+        if(!accept) {
+            String oldPath = message.getOldPath();
+            if(oldPath != null) {
+                accept = accept || wildCardMatch(oldPath);
+            }
         }
         
-        String newPath = message.getNewPath();
-        if(newPath != null) {
-            return wildCardMatch(newPath);
+        if(!accept) {
+            String newPath = message.getNewPath();
+            if(newPath != null) {
+                accept = accept || wildCardMatch(newPath);
+            }
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(CollectionRm message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
         
-        String path = message.getPath();
-        if(path != null) {
-            return wildCardMatch(path);
+        if(!accept) {
+            String path = message.getPath();
+            if(path != null) {
+                accept = accept || wildCardMatch(path);
+            }
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(DataObjectAclMod message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(DataObjectAdd message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
         
-        String path = message.getPath();
-        if(path != null) {
-            return wildCardMatch(path);
+        if(!accept) {
+            String path = message.getPath();
+            if(path != null) {
+                accept = accept || wildCardMatch(path);
+            }
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(DataObjectMetadataAdd message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(DataObjectMetadataMod message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(DataObjectMod message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(DataObjectMv message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
         
-        String oldPath = message.getOldPath();
-        if(oldPath != null) {
-            return wildCardMatch(oldPath);
+        if(!accept) {
+            String oldPath = message.getOldPath();
+            if(oldPath != null) {
+                accept = accept || wildCardMatch(oldPath);
+            }
         }
         
-        String newPath = message.getNewPath();
-        if(newPath != null) {
-            return wildCardMatch(newPath);
+        if(!accept) {
+            String newPath = message.getNewPath();
+            if(newPath != null) {
+                accept = accept || wildCardMatch(newPath);
+            }
         }
-        return false;
+        return accept;
     }
     
     public boolean accept(DataObjectRm message) {
+        boolean accept = false;
         if(this.pattern.equals("*")) {
             return true;
         }
         
         String entityPath = message.getEntityPath();
         if(entityPath != null) {
-            return wildCardMatch(entityPath);
+            accept = accept || wildCardMatch(entityPath);
         }
         
-        String path = message.getPath();
-        if(path != null) {
-            return wildCardMatch(path);
+        if(!accept) {
+            String path = message.getPath();
+            if(path != null) {
+                accept = accept || wildCardMatch(path);
+            }
         }
-        return false;
+        return accept;
     }
     
     @Override
