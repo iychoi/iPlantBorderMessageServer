@@ -33,6 +33,7 @@ import org.junit.Test;
  */
 public class DataStoreClientTest {
     
+    private boolean test;
     private BMSConf conf;
     private IPlantBorderMessageServer server;
     
@@ -50,39 +51,53 @@ public class DataStoreClientTest {
     @Before
     public void setUp() throws IOException {
         BasicConfigurator.configure();
-        this.conf = BMSConf.createInstance(new File("./config.json"));
-        this.server = new IPlantBorderMessageServer(this.conf.getMessageServerConf(), this.conf.getDataStoreConfConf());
-        this.server.connect();
+        File f = new File("./test_config.json");
+        this.test = false;
+        
+        if(f.exists()) {
+            this.test = true;
+            this.conf = BMSConf.createInstance(new File("./test_config.json"));
+            this.server = new IPlantBorderMessageServer(this.conf.getMessageServerConf(), this.conf.getDataStoreConfConf());
+            this.server.connect();
+        }
     }
     
     @After
     public void tearDown() throws IOException {
-        this.server.close();
-        this.server = null;
-        this.conf = null;
+        if(this.test) {
+            this.server.close();
+            this.server = null;
+            this.conf = null;
+        }
     }
 
     @Test
     public void testUUIDConvDataObject() throws InterruptedException, IOException {
-        DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
-        String dataObjectPath = datastoreClient.convertUUIDToPathForDataObject("83015514-8db6-11e5-9d66-1a5a300ff36f");
-        Assert.assertNotNull(dataObjectPath);
-        Assert.assertEquals("uuid of an object", "/iplant/home/iychoi/test.txt", dataObjectPath);
+        if(this.test) {
+            DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
+            String dataObjectPath = datastoreClient.convertUUIDToPathForDataObject("83015514-8db6-11e5-9d66-1a5a300ff36f");
+            Assert.assertNotNull(dataObjectPath);
+            Assert.assertEquals("uuid of an object", "/iplant/home/iychoi/test.txt", dataObjectPath);
+        }
     }
     
     @Test
     public void testUUIDConvCollection() throws InterruptedException, IOException {
-        DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
-        String collectionPath = datastoreClient.convertUUIDToPathForCollection("6d7da718-8db8-11e5-9d66-1a5a300ff36f");
-        Assert.assertNotNull(collectionPath);
-        Assert.assertEquals("uuid of a collection", "/iplant/home/iychoi/testColl", collectionPath);
+        if(this.test) {
+            DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
+            String collectionPath = datastoreClient.convertUUIDToPathForCollection("6d7da718-8db8-11e5-9d66-1a5a300ff36f");
+            Assert.assertNotNull(collectionPath);
+            Assert.assertEquals("uuid of a collection", "/iplant/home/iychoi/testColl", collectionPath);
+        }
     }
     
     @Test
     public void testUUIDConvNotExist() throws InterruptedException, IOException {
-        DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
-        String notExistUUID = datastoreClient.convertUUIDToPathForDataObject("6d7da718-8db8-11e5-9d66-1a5a300ffd6f");
-        Assert.assertNull(notExistUUID);
+        if(this.test) {
+            DataStoreClient datastoreClient = this.server.getProcessor().getDatastoreClient();
+            String notExistUUID = datastoreClient.convertUUIDToPathForDataObject("6d7da718-8db8-11e5-9d66-1a5a300ffd6f");
+            Assert.assertNull(notExistUUID);
+        }
     }
     
 }

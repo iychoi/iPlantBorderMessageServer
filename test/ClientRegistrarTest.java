@@ -36,6 +36,7 @@ import org.junit.Test;
  */
 public class ClientRegistrarTest {
     
+    private boolean test;
     private BMSConf conf;
     private IPlantBorderMessageServer server;
     
@@ -53,30 +54,40 @@ public class ClientRegistrarTest {
     @Before
     public void setUp() throws IOException {
         BasicConfigurator.configure();
-        this.conf = BMSConf.createInstance(new File("./config.json"));
-        this.server = new IPlantBorderMessageServer(this.conf.getMessageServerConf(), this.conf.getDataStoreConfConf());
-        this.server.connect();
+        File f = new File("./test_config.json");
+        this.test = false;
+        
+        if(f.exists()) {
+            this.test = true;
+            this.conf = BMSConf.createInstance(f);
+            this.server = new IPlantBorderMessageServer(this.conf.getMessageServerConf(), this.conf.getDataStoreConfConf());
+            this.server.connect();
+        }
     }
     
     @After
     public void tearDown() throws IOException {
-        this.server.close();
-        this.server = null;
-        this.conf = null;
+        if(this.test) {
+            this.server.close();
+            this.server = null;
+            this.conf = null;
+        }
     }
 
     @Test
     public void testLease() throws InterruptedException, IOException {
-        ClientRegistrar registrar = this.server.getRegistrar();
-        RequestLease req = new RequestLease();
-        Client client = new Client();
-        client.setApplicationName("AGTest");
-        client.setUserId("iychoi");
-        req.setClient(client);
-        
-        ResponseLease res = registrar.lease(req);
-        
-        Assert.assertNotNull(res);
-        Assert.assertEquals("client obj", req.getClient(), res.getClient());
+        if(this.test) {
+            ClientRegistrar registrar = this.server.getRegistrar();
+            RequestLease req = new RequestLease();
+            Client client = new Client();
+            client.setApplicationName("AGTest");
+            client.setUserId("iychoi");
+            req.setClient(client);
+
+            ResponseLease res = registrar.lease(req);
+
+            Assert.assertNotNull(res);
+            Assert.assertEquals("client obj", req.getClient(), res.getClient());
+        }
     }
 }
